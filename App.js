@@ -1,6 +1,7 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"; // Import des icônes
 
 import Authentification from "./Screen/Authentification";
 import Home from "./Screen/Home";
@@ -19,14 +20,22 @@ export default function App() {
           options={{
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#000",
+              backgroundColor: "#5fb39d", // Changer la couleur de l'en-tête
               height: 60,
             },
-            headerTintColor: "#fff",
+            headerTintColor: "#fff", // Texte blanc pour le titre
             headerTitleAlign: "center",
             headerTitleStyle: {
               fontSize: 20,
             },
+            headerLeft: () => (
+              <MaterialCommunityIcons
+                name="login" // Icône d'authentification
+                size={25}
+                color="#fff" // Icône en blanc
+                style={{ marginLeft: 10 }}
+              />
+            ),
             title: "Connexion 🔐",
           }}
         />
@@ -37,14 +46,22 @@ export default function App() {
           options={{
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#000",
+              backgroundColor: "#5fb39d", // Changer la couleur de l'en-tête
               height: 60,
             },
-            headerTintColor: "#fff",
+            headerTintColor: "#fff", // Texte blanc pour le titre
             headerTitleAlign: "center",
             headerTitleStyle: {
               fontSize: 20,
             },
+            headerLeft: () => (
+              <MaterialCommunityIcons
+                name="home" // Icône Home
+                size={25}
+                color="#fff" // Icône en blanc
+                style={{ marginLeft: 10 }}
+              />
+            ),
             title: "Home 🌟",
           }}
         />
@@ -55,21 +72,51 @@ export default function App() {
           options={{
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#000",
+              backgroundColor: "#5fb39d", // Changer la couleur de l'en-tête
               height: 60,
             },
-            headerTintColor: "#fff",
+            headerTintColor: "#fff", // Texte blanc pour le titre
             headerTitleAlign: "center",
             headerTitleStyle: {
               fontSize: 20,
             },
+            headerLeft: () => (
+              <MaterialCommunityIcons
+                name="account-plus" // Icône pour Créer un compte
+                size={25}
+                color="#fff" // Icône en blanc
+                style={{ marginLeft: 10 }}
+              />
+            ),
             title: "Créer un compte ✍️",
           }}
         />
-                <Stack.Screen 
-                  name="Chat" component={Chat}>
-                </Stack.Screen>
 
+        <Stack.Screen
+          name="Chat"
+          component={Chat}
+          options={{
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#5fb39d", // Changer la couleur de l'en-tête
+              height: 60,
+            },
+            headerTintColor: "#fff", // Texte blanc pour le titre
+            headerTitleAlign: "center",
+            headerTitleStyle: {
+              fontSize: 20,
+            },
+            headerLeft: () => (
+              <MaterialCommunityIcons
+                name="chat" // Icône Chat
+                size={25}
+                color="#fff" // Icône en blanc
+                style={{ marginLeft: 10 }}
+              />
+            ),
+            title: "Chat 💬",
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

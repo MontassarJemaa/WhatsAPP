@@ -110,15 +110,14 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   input: {
-    backgroundColor: "#333",  // Fond plus neutre
+    backgroundColor: "#333",  
     padding: 15,
     borderRadius: 10,
     color: "#fff",
     marginBottom: 15,
-    // Retrait de la bordure pour un aspect plus simple
   },
   button: {
-    backgroundColor: "#4e8cff",
+    backgroundColor: "#5fb39d",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",

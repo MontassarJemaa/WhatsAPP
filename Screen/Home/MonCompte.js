@@ -1,17 +1,6 @@
 import React, { useState } from "react";
 import {
-  Image,
-  ImageBackground,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableWithoutFeedback,
-  View,
-  TouchableOpacity,
+  Image,ImageBackground,Keyboard,KeyboardAvoidingView,Platform,ScrollView,StyleSheet,Text,TextInput,TouchableWithoutFeedback,View,TouchableOpacity,
 } from "react-native";
 import firebase from "../../Config";
 
@@ -42,19 +31,19 @@ export default function MonCompte() {
             <Text style={styles.title}>Paramètre compte</Text>
 
             <TextInput
-              value={pseudo}
-              onChangeText={(ch) => setPseudo(ch)}
-              style={styles.input}
-              placeholderTextColor={"white"}
+              style={[styles.input, { textAlign: "center" }]}
               placeholder="ECRIRE VOTRE PSEUDO"
+              placeholderTextColor="white"
+              value={pseudo}
+              onChangeText={setPseudo}
             />
 
             <TextInput
-              value={numero}
-              onChangeText={(ch) => setNumero(ch)}
-              style={styles.input}
-              placeholderTextColor={"white"}
+              style={[styles.input, { textAlign: "center" }]}
               placeholder="ECRIRE VOTRE NUMERO"
+              placeholderTextColor="white"
+              value={numero}
+              onChangeText={setNumero}
               keyboardType="numeric"
             />
 
@@ -146,23 +135,19 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   input: {
-    color: "white",
-    borderWidth: 2,
-    borderColor: "black",
-    height: 50,
-    width: "90%",
-    backgroundColor: "#0007",
+    backgroundColor: "#333",
+    padding: 15,
+    borderRadius: 10,
+    color: "#fff",
     marginBottom: 15,
-    borderRadius: 4,
-    textAlign: "center",
-    fontSize: 16,
+    width: 300,
   },
   singleButtonContainer: {
-    marginTop: 20,
-    width: 200,
+    marginTop: 18,
+    width: 180,
   },
   saveButton: {
-    backgroundColor: "#4e8cff", // Bleu clair pour le bouton "Save"
+    backgroundColor: "#5fb39d", // Bleu clair pour le bouton "Save"
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 30,
@@ -170,7 +155,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   deconnectButton: {
-    backgroundColor: "#4e8cff", // Bleu clair pour le bouton "Déconnecter"
+    backgroundColor: "#ff6f61", // Bleu clair pour le bouton "Déconnecter"
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 30,

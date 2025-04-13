@@ -12,9 +12,13 @@ export default function Home() {
   return (
     <Tab.Navigator
       initialRouteName="ListComptes"
-      activeColor="#fff"           // Icônes/texte actifs en blanc
-      inactiveColor="#aaa"         // Icônes/texte inactifs gris clair
-      barStyle={{ backgroundColor: "#000" }}  // Barre noire
+      activeColor="#5fb39d"  // Icônes/texte actifs en vert menthe clair
+      inactiveColor="#b0b0b0" // Icônes/texte inactifs gris clair
+      barStyle={{
+        backgroundColor: "#212121",  // Barre noire pour la fondation
+        elevation: 8,                 // Ombre portée pour un effet de surélévation
+        paddingBottom: 5,             // Espacement au bas
+      }}
     >
       <Tab.Screen
         name="ListComptes"
@@ -22,7 +26,11 @@ export default function Home() {
         options={{
           tabBarLabel: "Comptes",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-multiple" color={color} size={24} />
+            <MaterialCommunityIcons
+              name="account-multiple"
+              color={color}
+              size={30}  // Taille des icônes
+            />
           ),
         }}
       />
@@ -32,7 +40,11 @@ export default function Home() {
         options={{
           tabBarLabel: "Forum",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="forum" color={color} size={24} />
+            <MaterialCommunityIcons
+              name="forum"
+              color={color}
+              size={30}  // Taille des icônes
+            />
           ),
         }}
       />
@@ -42,7 +54,11 @@ export default function Home() {
         options={{
           tabBarLabel: "Moi",
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-circle" color={color} size={26} />
+            <MaterialCommunityIcons
+              name="account-circle"
+              color={color}
+              size={32}  // Taille des icônes
+            />
           ),
         }}
       />
