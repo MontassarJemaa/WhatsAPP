@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import {
-  BackHandler,
+  Image,
   ImageBackground,
   View,
   Text,
@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import firebase from "../Config";
+
+// Logo nouveau compte
+import Logo from "../assets/nouveaucompte.png";
 
 const auth = firebase.auth();
 
@@ -47,9 +50,13 @@ export default function NewCompte({ navigation }) {
         style={styles.overlay}
       >
         <StatusBar style="light" />
-        <View style={styles.container}>
-          <Text style={styles.title}>Nouveau Compte</Text>
 
+        <View style={styles.logoContainer}>
+          <Image source={Logo} style={styles.logo} />
+          <Text style={styles.welcome}>Créer un compte</Text>
+        </View>
+
+        <View style={styles.form}>
           <TextInput
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -96,20 +103,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 20,
   },
-  container: {
-    width: "100%",
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
-    borderRadius: 15,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#000",
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 40,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 10,
+  },
+  welcome: {
     color: "#fff",
-    textAlign: "center",
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: "bold",
+  },
+  form: {
+    width: "100%",
   },
   input: {
     backgroundColor: "#222",

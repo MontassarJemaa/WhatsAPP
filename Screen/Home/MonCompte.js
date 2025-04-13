@@ -28,20 +28,18 @@ export default function MonCompte() {
       source={require("../../assets/background.png")}
       style={styles.container}
     >
-      <View style={styles.overlay} /> {/* Overlay pour rendre l'image plus sombre */}
-      
+      <View style={styles.overlay} />{" "}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, width: "100%" }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView contentContainerStyle={styles.scroll}>
-            <Text style={styles.title}>Paramètre compte</Text>
-
             <Image
               source={require("../../assets/parametre_compte1.png")}
               style={styles.image}
             />
+            <Text style={styles.title}>Paramètre compte</Text>
 
             <TextInput
               value={pseudo}
@@ -80,7 +78,9 @@ export default function MonCompte() {
                       alert("⚠️ Ce compte existe déjà !");
                     } else {
                       const cle = ref_listcompte.push().key;
-                      const ref_uncompte = ref_listcompte.child("uncompte" + cle);
+                      const ref_uncompte = ref_listcompte.child(
+                        "uncompte" + cle
+                      );
                       await ref_uncompte.set({ pseudo, numero });
 
                       // 🔁 Réinitialiser les champs
@@ -124,8 +124,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject, // Pour couvrir toute la surface de l'écran
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Couleur sombre semi-transparente
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   scroll: {
     alignItems: "center",
@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   image: {
-    width: 250,
-    height: 250,
-    backgroundColor: "#0052",
+    width: 220,
+    height: 220,
+    backgroundColor: "",
     borderRadius: 40,
     marginBottom: 50,
   },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderColor: "black",
     height: 50,
     width: "90%",
-    backgroundColor: "#0007", 
+    backgroundColor: "#0007",
     marginBottom: 15,
     borderRadius: 4,
     textAlign: "center",
