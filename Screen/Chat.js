@@ -16,6 +16,9 @@ export default function Chat(props) {
       source={require("../assets/background.png")}
       style={styles.container}
     >
+      {/* Overlay semi-transparent foncé */}
+      <View style={styles.overlay} />
+
       {/* Bouton de retour */}
       <TouchableOpacity style={styles.backButton} onPress={() => props.navigation.goBack()}>
         <Text style={styles.backButtonText}>← Retour</Text>
@@ -56,6 +59,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.6)", 
+  },
   backButton: {
     alignSelf: "flex-start",
     marginLeft: 20,
@@ -64,12 +71,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: "#11A",
+    color: "white",
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#11A",
+    color: "white",
     marginBottom: 20,
   },
   chatBox: {
@@ -100,7 +107,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sendButton: {
-    backgroundColor: "#11A",
+    backgroundColor: "#5fb39d",
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 8,

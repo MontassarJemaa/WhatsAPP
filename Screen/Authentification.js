@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 90,
-    height: 90,
+    width: 120,
+    height: 120,
     marginBottom: 10,
   },
   welcome: {
@@ -110,15 +110,14 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   input: {
-    backgroundColor: "#333",  // Fond plus neutre
+    backgroundColor: "#333",  
     padding: 15,
     borderRadius: 10,
     color: "#fff",
     marginBottom: 15,
-    // Retrait de la bordure pour un aspect plus simple
   },
   button: {
-    backgroundColor: "#4e8cff",
+    backgroundColor: "#5fb39d",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
