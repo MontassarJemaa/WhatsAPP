@@ -8,7 +8,8 @@ import MonCompte from "./Home/MonCompte";
 
 const Tab = createMaterialBottomTabNavigator();
 
-export default function Home() {
+export default function Home(props) {
+  const iduser = props.route.params.iduser;
   return (
     <Tab.Navigator
       initialRouteName="ListComptes"
@@ -23,6 +24,7 @@ export default function Home() {
       <Tab.Screen
         name="ListComptes"
         component={ListComptes}
+        initialParams={{iduser}}
         options={{
           tabBarLabel: "Comptes",
           tabBarIcon: ({ color }) => (
@@ -51,6 +53,7 @@ export default function Home() {
       <Tab.Screen
         name="MonCompte"
         component={MonCompte}
+        initialParams={{iduser}}
         options={{
           tabBarLabel: "Moi",
           tabBarIcon: ({ color }) => (

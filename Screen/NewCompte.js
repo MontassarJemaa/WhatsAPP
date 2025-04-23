@@ -17,6 +17,9 @@ import firebase from "../Config";
 import Logo from "../assets/nouveaucompte.png";
 
 const auth = firebase.auth();
+const database = firebase.database();
+const ref_database = database.ref();
+const ref_listcompte = ref_database.child("List_comptes");
 
 export default function NewCompte({ navigation }) {
   const [Email, setEmail] = useState("");
@@ -29,7 +32,10 @@ export default function NewCompte({ navigation }) {
         .createUserWithEmailAndPassword(Email, Password)
         .then(() => {
           const iduser = auth.currentUser.uid;
+          const ref_uncompte = ref_listcompte.child(iduser);
+          ref_uncompte.set({id:iduser,connected:true});
           navigation.replace("Home", { iduser });
+          alert("Compte créé avec succès !");
         })
         .catch((err) => {
           alert(err.message);

@@ -14,6 +14,9 @@ import {
 import firebase from "../Config";
 
 const auth = firebase.auth();
+const database = firebase.database();
+const ref_database = database.ref();
+const ref_listcompte = ref_database.child("List_comptes");
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("test@gmail.com");
@@ -24,6 +27,8 @@ export default function LoginScreen({ navigation }) {
       .signInWithEmailAndPassword(email, password)
       .then(() => {
         const iduser = auth.currentUser.uid;
+        const ref_uncompte = ref_listcompte.child(iduser);
+        ref_uncompte.update({ id: iduser, connected: true });
         navigation.navigate("Home", { iduser });
       })
       .catch((error) => {
@@ -33,7 +38,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <ImageBackground
-      source={require("../assets/background.png")} 
+      source={require("../assets/background.png")}
       style={styles.bg}
       resizeMode="cover"
     >
@@ -43,10 +48,7 @@ export default function LoginScreen({ navigation }) {
       >
         <StatusBar barStyle="light-content" />
         <View style={styles.logoContainer}>
-          <Image
-            source={require("../assets/logo1.png")} 
-            style={styles.logo}
-          />
+          <Image source={require("../assets/logo1.png")} style={styles.logo} />
           <Text style={styles.welcome}>Connexion</Text>
         </View>
 
@@ -72,7 +74,9 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.navigate("NewCompte")}>
-            <Text style={styles.link}>Pas encore inscrit ? Créer un compte</Text>
+            <Text style={styles.link}>
+              Pas encore inscrit ? Créer un compte
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(34, 33, 33, 0.6)", 
+    backgroundColor: "rgba(34, 33, 33, 0.6)",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   input: {
-    backgroundColor: "#333",  
+    backgroundColor: "#333",
     padding: 15,
     borderRadius: 10,
     color: "#fff",

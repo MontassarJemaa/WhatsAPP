@@ -14,21 +14,25 @@ import firebase from "../../Config";
 
 const database = firebase.database();
 const ref_database = database.ref();
-const ref_listcompte = ref_database.child("List_comptes");
+const ref_listCompte = ref_database.child("List_comptes");
 
 export default function ListComptes(props) {
+  const iduser = props.route.params.iduser;
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    ref_listcompte.on("value", (snapshot) => {
-      const d = [];
+    var d = [];
+    ref_listCompte.on("value", (snapshot) => {
       snapshot.forEach((uncompte) => {
-        d.push(uncompte.val());
+        if (uncompte.val().id != iduser) {
+          d.push(uncompte.val());
+        }
       });
+      console.log(d);
       setData(d);
     });
     return () => {
-      ref_listcompte.off();
+      ref_listCompte.off();
     };
   }, []);
 
@@ -57,7 +61,10 @@ export default function ListComptes(props) {
               </View>
               <TouchableOpacity
                 onPress={() => {
-                  props.navigation.navigate("Chat");
+                  props.navigation.navigate("Chat", {
+                    currentid: iduser,
+                    secondid: item.id,
+                  });
                 }}
               >
                 <Image
@@ -79,6 +86,14 @@ export default function ListComptes(props) {
                   style={styles.icon}
                 />
               </TouchableOpacity>
+              <View
+                style={{
+                  width: 13,
+                  height: 13,
+                  borderRadius: 10,
+                  backgroundColor: item.connected ? "green" : "red",
+                }}
+              ></View>
             </View>
           )}
         />

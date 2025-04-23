@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 import {
-  Image,ImageBackground,Keyboard,KeyboardAvoidingView,Platform,ScrollView,StyleSheet,Text,TextInput,TouchableWithoutFeedback,View,TouchableOpacity,
+  Image,
+  ImageBackground,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+  TouchableOpacity,
 } from "react-native";
 import firebase from "../../Config";
 
@@ -8,7 +19,8 @@ const database = firebase.database();
 const ref_database = database.ref();
 const ref_listcompte = ref_database.child("List_comptes");
 
-export default function MonCompte() {
+export default function MonCompte(props) {
+  const iduser = props.route.params.iduser;
   const [pseudo, setPseudo] = useState("");
   const [numero, setNumero] = useState("");
 
@@ -17,7 +29,7 @@ export default function MonCompte() {
       source={require("../../assets/background.png")}
       style={styles.container}
     >
-      <View style={styles.overlay} />{" "}
+      <View style={styles.overlay} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, width: "100%" }}
@@ -29,7 +41,6 @@ export default function MonCompte() {
               style={styles.image}
             />
             <Text style={styles.title}>Paramètre compte</Text>
-
             <TextInput
               style={[styles.input, { textAlign: "center" }]}
               placeholder="ECRIRE VOTRE PSEUDO"
@@ -37,7 +48,6 @@ export default function MonCompte() {
               value={pseudo}
               onChangeText={setPseudo}
             />
-
             <TextInput
               style={[styles.input, { textAlign: "center" }]}
               placeholder="ECRIRE VOTRE NUMERO"
@@ -46,8 +56,7 @@ export default function MonCompte() {
               onChangeText={setNumero}
               keyboardType="numeric"
             />
-
-            {/* Bouton SAVE */}
+            {/* Bouton SAVE */}/
             <View style={styles.singleButtonContainer}>
               <TouchableOpacity
                 style={styles.saveButton}
@@ -66,16 +75,8 @@ export default function MonCompte() {
                     if (exist) {
                       alert("⚠️ Ce compte existe déjà !");
                     } else {
-                      const cle = ref_listcompte.push().key;
-                      const ref_uncompte = ref_listcompte.child(
-                        "uncompte" + cle
-                      );
-                      await ref_uncompte.set({ pseudo, numero });
-
-                      // 🔁 Réinitialiser les champs
-                      setPseudo("");
-                      setNumero("");
-
+                      const ref_uncompte = ref_listcompte.child(iduser);
+                      await ref_uncompte.set({ id: iduser, pseudo, numero });
                       alert("✅ Compte enregistré !");
                     }
                   } catch (err) {
@@ -87,13 +88,14 @@ export default function MonCompte() {
                 <Text style={styles.buttonText}>SAVE</Text>
               </TouchableOpacity>
             </View>
-
             {/* Bouton DÉCONNECT */}
             <View style={styles.singleButtonContainer}>
               <TouchableOpacity
                 style={styles.deconnectButton}
                 onPress={() => {
-                  alert("Déconnecté !");
+                  const ref_uncompte = ref_listcompte.child(iduser);
+                  ref_uncompte.update({ id: iduser, connected: false });
+                  props.navigation.replace("Authentification");
                 }}
               >
                 <Text style={styles.buttonText}>DÉCONNECT</Text>
