@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <ImageBackground
       source={require("../assets/background.png")}
-      style={styles.bg}
+      style={styles.container}
       resizeMode="cover"
     >
       <KeyboardAvoidingView
@@ -85,13 +85,11 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  bg: {
+  container: {
     flex: 1,
-    justifyContent: "center",
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(34, 33, 33, 0.6)",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
@@ -109,25 +107,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 26,
     fontWeight: "bold",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   form: {
     width: "100%",
   },
   input: {
-    backgroundColor: "#333",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     padding: 15,
     borderRadius: 10,
     color: "#fff",
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   button: {
-    backgroundColor: "#5fb39d",
+    backgroundColor: "#4CAF50",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: "rgba(0, 0, 0, 0.2)",
   },
   buttonText: {
     color: "#fff",

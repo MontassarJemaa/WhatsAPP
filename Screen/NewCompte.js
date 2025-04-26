@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
 import React, { useState } from "react";
 import firebase from "../Config";
@@ -33,7 +34,7 @@ export default function NewCompte({ navigation }) {
         .then(() => {
           const iduser = auth.currentUser.uid;
           const ref_uncompte = ref_listcompte.child(iduser);
-          ref_uncompte.set({id:iduser,connected:true});
+          ref_uncompte.set({ id: iduser, connected: true });
           navigation.replace("Home", { iduser });
           alert("Compte créé avec succès !");
         })
@@ -48,7 +49,7 @@ export default function NewCompte({ navigation }) {
   return (
     <ImageBackground
       source={require("../assets/background.png")}
-      style={styles.bg}
+      style={styles.container}
       resizeMode="cover"
     >
       <KeyboardAvoidingView
@@ -69,6 +70,7 @@ export default function NewCompte({ navigation }) {
             placeholder="Adresse Email"
             placeholderTextColor="#ccc"
             style={styles.input}
+            value={Email}
           />
 
           <TextInput
@@ -77,6 +79,7 @@ export default function NewCompte({ navigation }) {
             placeholder="Mot de passe"
             placeholderTextColor="#ccc"
             style={styles.input}
+            value={Password}
           />
 
           <TextInput
@@ -85,11 +88,22 @@ export default function NewCompte({ navigation }) {
             placeholder="Confirmer le mot de passe"
             placeholderTextColor="#ccc"
             style={styles.input}
+            value={ConfirmePassword}
           />
 
           <View style={styles.buttons}>
-            <Button title="Créer" onPress={handleCreate} color="#4e8cff" />
-            <Button title="Annuler" onPress={() => navigation.goBack()} color="#888" />
+            <TouchableOpacity
+              style={[styles.cancelButton, { marginRight: 10 }]}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.buttonText}>Annuler</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={handleCreate}
+            >
+              <Text style={styles.buttonText}>Créer</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -98,13 +112,11 @@ export default function NewCompte({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  bg: {
+  container: {
     flex: 1,
-    justifyContent: "center",
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(34, 33, 33, 0.6)",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
@@ -122,22 +134,46 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 26,
     fontWeight: "bold",
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   form: {
     width: "100%",
   },
   input: {
-    backgroundColor: "#222",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     color: "#fff",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: "#000",
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   buttons: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
+  },
+  createButton: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    flex: 1,
+    marginRight: 5,
+  },
+  cancelButton: {
+    backgroundColor: "rgb(234, 42, 42)",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 5,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

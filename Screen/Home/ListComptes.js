@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   Platform,
   Linking,
+  StatusBar,
 } from "react-native";
 import React, { useEffect, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import firebase from "../../Config";
 
 const database = firebase.database();
@@ -28,7 +30,6 @@ export default function ListComptes(props) {
           d.push(uncompte.val());
         }
       });
-      console.log(d);
       setData(d);
     });
     return () => {
@@ -38,15 +39,31 @@ export default function ListComptes(props) {
 
   return (
     <ImageBackground
-      style={styles.bg}
       source={require("../../assets/background.png")}
+      style={styles.container}
       resizeMode="cover"
     >
-      <View style={styles.overlay}>
-        <Text style={styles.title}>Liste des Comptes</Text>
+      <StatusBar
+        backgroundColor="rgba(0, 0, 0, 0.7)"
+        barStyle="light-content"
+      />
 
+      {/* En-tête personnalisé */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => props.navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Liste des Comptes</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.content}>
         <FlatList
           style={styles.flatList}
+          contentContainerStyle={{ paddingTop: 10 }}
           data={data}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => (
@@ -103,21 +120,45 @@ export default function ListComptes(props) {
 }
 
 const styles = StyleSheet.create({
-  bg: {
+  container: {
     flex: 1,
+    backgroundColor: "#121212",
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(34, 33, 33, 0.6)",
-    paddingTop: 50,
-    paddingHorizontal: 15,
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingVertical: 25,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+    marginTop: StatusBar.currentHeight || 0,
+    height: 90,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    marginBottom: -5,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#fff",
+    fontSize: 20,
+    fontWeight: "600",
+    color: "white",
+    letterSpacing: 0.5,
     textAlign: "center",
-    marginBottom: 20,
+    flex: 1,
+    marginHorizontal: 10,
+    marginBottom: 4,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 15,
   },
   flatList: {
     flex: 1,
@@ -125,7 +166,7 @@ const styles = StyleSheet.create({
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#222",
+    backgroundColor: "rgba(34, 33, 33, 0.6)",
     marginBottom: 10,
     borderRadius: 10,
     padding: 10,
@@ -149,6 +190,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     marginHorizontal: 5,
-    tintColor: "#7edbc4", // pour correspondre au thème
+    tintColor: "rgba(255, 255, 255, 0.93)",
   },
 });

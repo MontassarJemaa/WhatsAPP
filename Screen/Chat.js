@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  StatusBar,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import firebase from "../Config";
@@ -125,7 +126,12 @@ const Chat = (props) => {
       style={styles.container}
       resizeMode="cover"
     >
-      {/* Header */}
+      <StatusBar
+        backgroundColor="rgba(0, 0, 0, 0.7)"
+        barStyle="light-content"
+      />
+
+      {/* Nouvel en-tête unifié */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -133,15 +139,15 @@ const Chat = (props) => {
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.title}>Messages</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Messages 💬</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Liste des messages */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex1}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={90} // Ajusté pour la nouvelle hauteur d'en-tête
       >
         <FlatList
           ref={flatListRef}
@@ -252,31 +258,50 @@ const Chat = (props) => {
   );
 };
 
-export default Chat;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#121212",
   },
-  flex1: {
-    flex: 1,
-  },
+  // Styles de l'en-tête unifié
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "space-between",
-    padding: 15,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
     backgroundColor: "rgba(0, 0, 0, 0.7)",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+    borderBottomColor: "#2d5a4a",
+    marginTop: StatusBar.currentHeight || 0,
+    height: 90,
   },
   backButton: {
-    padding: 5,
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    marginBottom: 5,
   },
-  title: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: "600",
     color: "white",
+    letterSpacing: 0.5,
+    textAlign: "center",
+    flex: 1,
+    marginHorizontal: 15,
+    marginBottom: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  // Styles existants
+  flex1: {
+    flex: 1,
   },
   messagesContainer: {
     padding: 15,
@@ -406,3 +431,5 @@ const styles = StyleSheet.create({
     color: "#555",
   },
 });
+
+export default Chat;
