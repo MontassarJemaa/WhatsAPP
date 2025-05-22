@@ -143,6 +143,7 @@ export default function ListComptes(props) {
   const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [imageCache, setImageCache] = useState({});
+  const [unreadMessages, setUnreadMessages] = useState({});
 
   // Fonction pour précharger les images des contacts
   const preloadContactImages = async (contacts) => {
@@ -220,6 +221,45 @@ export default function ListComptes(props) {
   // Fonction pour rafraîchir les données
   const onRefresh = loadData;
 
+  // Fonction pour vérifier les messages non lus pour un contact
+  const checkUnreadMessages = async (contactId) => {
+    try {
+      // Créer l'ID de discussion (combinaison des deux IDs)
+      const discussionId = iduser > contactId ? iduser + contactId : contactId + iduser;
+
+      // Référence à la discussion
+      const discussionRef = ref_database.child("List_des_messages").child(discussionId).child("les_messages");
+
+      // Récupérer les messages
+      const snapshot = await discussionRef.once("value");
+      let unreadCount = 0;
+
+      snapshot.forEach((message) => {
+        const messageData = message.val();
+        // Compter les messages non lus envoyés par le contact
+        if (messageData.sender === contactId && messageData.receiver === iduser && !messageData.seen) {
+          unreadCount++;
+        }
+      });
+
+      return unreadCount;
+    } catch (error) {
+      console.error("Erreur lors de la vérification des messages non lus:", error);
+      return 0;
+    }
+  };
+
+  // Fonction pour vérifier les messages non lus pour tous les contacts
+  const checkAllUnreadMessages = async (contacts) => {
+    const unreadCounts = {};
+
+    for (const contact of contacts) {
+      unreadCounts[contact.id] = await checkUnreadMessages(contact.id);
+    }
+
+    setUnreadMessages(unreadCounts);
+  };
+
   useEffect(() => {
     // Charger les données initiales
     loadData();
@@ -239,18 +279,29 @@ export default function ListComptes(props) {
 
       // Précharger les images des contacts lorsque les données changent
       await preloadContactImages(d);
+
+      // Vérifier les messages non lus
+      await checkAllUnreadMessages(d);
     };
 
     ref_listCompte.on("value", handleDataChange);
 
-    // Nettoyer l'écouteur et le cache lorsque le composant est démonté
+    // Écouter les changements dans les messages
+    const messagesRef = ref_database.child("List_des_messages");
+    messagesRef.on("child_changed", async () => {
+      // Mettre à jour les compteurs de messages non lus lorsque les messages changent
+      await checkAllUnreadMessages(data);
+    });
+
+    // Nettoyer les écouteurs lorsque le composant est démonté
     return () => {
       ref_listCompte.off("value", handleDataChange);
+      messagesRef.off("child_changed");
 
       // Nous ne supprimons pas les images du cache lors du démontage
       // pour qu'elles soient disponibles lors de la prochaine ouverture
     };
-  }, [iduser]);
+  }, [iduser, data.length]);
 
   return (
     <ImageBackground
@@ -298,14 +349,36 @@ export default function ListComptes(props) {
           }
           renderItem={({ item }) => (
             <View style={styles.itemContainer}>
-              <ProfileImage
-                imageUrl={item.urlimage}
-                userId={item.id}
-              />
+              <View style={styles.avatarWrapper}>
+                <ProfileImage
+                  imageUrl={item.urlimage}
+                  userId={item.id}
+                />
+                {/* Indicateur de connexion en bas à gauche */}
+                <View
+                  style={[
+                    styles.connectionIndicator,
+                    {
+                      backgroundColor: item.connected ? "green" : "red",
+                    }
+                  ]}
+                />
+              </View>
+
               <View style={styles.info}>
                 <Text style={styles.text}>Numéro: {item.numero}</Text>
                 <Text style={styles.text}>Pseudo: {item.pseudo}</Text>
+
+                {/* Indicateur de messages non lus */}
+                {unreadMessages[item.id] > 0 && (
+                  <View style={styles.messageIndicatorContainer}>
+                    <Text style={styles.messageIndicatorText}>
+                      {unreadMessages[item.id]} nouveau{unreadMessages[item.id] > 1 ? 'x' : ''} message{unreadMessages[item.id] > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                )}
               </View>
+
               <TouchableOpacity
                 onPress={() => {
                   props.navigation.navigate("Chat", {
@@ -319,6 +392,7 @@ export default function ListComptes(props) {
                   style={styles.icon}
                 />
               </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => {
                   const url =
@@ -333,14 +407,6 @@ export default function ListComptes(props) {
                   style={styles.icon}
                 />
               </TouchableOpacity>
-              <View
-                style={{
-                  width: 13,
-                  height: 13,
-                  borderRadius: 10,
-                  backgroundColor: item.connected ? "green" : "red",
-                }}
-              ></View>
             </View>
           )}
         />
@@ -410,12 +476,25 @@ const styles = StyleSheet.create({
   avatarContainer: {
     width: 50,
     height: 50,
-    marginRight: 10,
     borderRadius: 25,
     backgroundColor: 'rgba(200, 200, 200, 0.2)',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  connectionIndicator: {
+    position: 'absolute',
+    width: 13,
+    height: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.3)',
+    bottom: 0,
+    left: 0,
   },
   avatar: {
     width: 50,
@@ -429,6 +508,21 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     color: "#fff",
+  },
+  messageIndicatorContainer: {
+    backgroundColor: 'rgba(88, 190, 85, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 5,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(88, 190, 85, 0.5)',
+  },
+  messageIndicatorText: {
+    color: 'rgb(88, 190, 85)',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   icon: {
     width: 28,
