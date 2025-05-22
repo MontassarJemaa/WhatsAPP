@@ -4,14 +4,14 @@
     "slug": "whatsApp_JEMAA_Montassar",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/splash-icon1.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "sdkVersion": "53.0.0",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon1.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#121212"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,8 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon1.png",
+        "backgroundColor": "#121212"
       },
       "permissions": [
         "android.permission.CAMERA",

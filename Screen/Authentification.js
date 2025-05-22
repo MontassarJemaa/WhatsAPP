@@ -10,8 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import firebase from "../Config";
+import { Ionicons } from "@expo/vector-icons";
 
 const auth = firebase.auth();
 const database = firebase.database();
@@ -21,6 +24,7 @@ const ref_listcompte = ref_database.child("List_comptes");
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
     auth
@@ -36,16 +40,22 @@ export default function LoginScreen({ navigation }) {
       });
   };
 
+  // Fonction pour fermer le clavier lorsqu'on clique en dehors
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <ImageBackground
       source={require("../assets/background.png")}
       style={styles.container}
       resizeMode="cover"
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.overlay}
-      >
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.overlay}
+        >
         <StatusBar barStyle="light-content" />
         <View style={styles.logoContainer}>
           <Image source={require("../assets/logo1.png")} style={[styles.logo, { tintColor: 'white' }]} />
@@ -61,14 +71,31 @@ export default function LoginScreen({ navigation }) {
             onChangeText={setEmail}
             keyboardType="email-address"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Mot de passe"
-            placeholderTextColor="#ccc"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Mot de passe"
+              placeholderTextColor="#ccc"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              textContentType="oneTimeCode"
+              autoComplete="off"
+              autoCorrect={false}
+              importantForAutofill="no"
+              spellCheck={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={18}
+                color="#ccc"
+              />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity style={styles.button} onPress={handleLogin}>
             <Text style={styles.buttonText}>Se connecter</Text>
           </TouchableOpacity>
@@ -80,6 +107,7 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ImageBackground>
   );
 }
@@ -122,6 +150,24 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    alignItems: "center",
+  },
+  passwordInput: {
+    flex: 1,
+    color: "#fff",
+    padding: 15,
+  },
+  eyeIcon: {
+    padding: 10,
+    marginRight: 5,
   },
   button: {
     backgroundColor: "rgb(88, 190, 85)",

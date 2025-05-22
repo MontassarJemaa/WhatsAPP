@@ -13,6 +13,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   // ScrollView n'est plus utilisé
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -226,34 +228,40 @@ export default function CreateGroup({ route, navigation }) {
     }
   };
 
+  // Fonction pour fermer le clavier lorsqu'on clique en dehors
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <ImageBackground
       source={require("../assets/background.png")}
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar
-        backgroundColor="rgba(0, 0, 0, 0.7)"
-        barStyle="light-content"
-      />
+        <StatusBar
+          backgroundColor="rgba(0, 0, 0, 0.7)"
+          barStyle="light-content"
+        />
 
-      {/* En-tête */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+        {/* En-tête */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Nouveau Groupe</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidingView}
         >
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Nouveau Groupe</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
-      >
-        <View style={styles.contentContainer}>
+          <TouchableWithoutFeedback onPress={dismissKeyboard}>
+            <View style={styles.contentContainer}>
           {/* En-tête avec image et nom du groupe */}
           <View style={styles.headerSection}>
             {/* Image du groupe */}
@@ -368,6 +376,7 @@ export default function CreateGroup({ route, navigation }) {
             />
           )}
         </View>
+            </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </ImageBackground>
   );
