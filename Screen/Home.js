@@ -3,13 +3,15 @@ import { createMaterialBottomTabNavigator } from "@react-navigation/material-bot
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 import ListComptes from "./Home/ListComptes";
-import Forum from "./Home/Forum";
+import Group from "./Home/Group";
 import MonCompte from "./Home/MonCompte";
 
 const Tab = createMaterialBottomTabNavigator();
 
 export default function Home(props) {
   const iduser = props.route.params.iduser;
+  // Récupérer l'objet profileImage s'il existe
+  const profileImage = props.route.params.profileImage || null;
   return (
     <Tab.Navigator
       initialRouteName="ListComptes"
@@ -37,13 +39,14 @@ export default function Home(props) {
         }}
       />
       <Tab.Screen
-        name="Forum"
-        component={Forum}
+        name="Group"
+        component={Group}
+        initialParams={{iduser}}
         options={{
-          tabBarLabel: "Forum",
+          tabBarLabel: "Groupes",
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons
-              name="forum"
+              name="account-group"
               color={color}
               size={30}  // Taille des icônes
             />
@@ -53,7 +56,7 @@ export default function Home(props) {
       <Tab.Screen
         name="MonCompte"
         component={MonCompte}
-        initialParams={{iduser}}
+        initialParams={{iduser, profileImage}}
         options={{
           tabBarLabel: "Moi",
           tabBarIcon: ({ color }) => (

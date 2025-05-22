@@ -19,8 +19,8 @@ const ref_database = database.ref();
 const ref_listcompte = ref_database.child("List_comptes");
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState("test@gmail.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = () => {
     auth
@@ -48,7 +48,7 @@ export default function LoginScreen({ navigation }) {
       >
         <StatusBar barStyle="light-content" />
         <View style={styles.logoContainer}>
-          <Image source={require("../assets/logo1.png")} style={styles.logo} />
+          <Image source={require("../assets/logo1.png")} style={[styles.logo, { tintColor: 'white' }]} />
           <Text style={styles.welcome}>Connexion</Text>
         </View>
 
@@ -124,13 +124,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
   button: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "rgb(88, 190, 85)",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.2)",
+    borderColor: "rgba(201, 184, 195, 0.64)",
   },
   buttonText: {
     color: "#fff",
