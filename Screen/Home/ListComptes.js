@@ -316,12 +316,7 @@ export default function ListComptes(props) {
 
       {/* En-tête personnalisé */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => props.navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.title}>Liste des Comptes</Text>
         <TouchableOpacity
           style={styles.refreshButton}
@@ -433,11 +428,8 @@ const styles = StyleSheet.create({
     marginTop: StatusBar.currentHeight || 0,
     height: 90,
   },
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    marginBottom: -5,
+  headerSpacer: {
+    width: 40,
   },
   refreshButton: {
     padding: 8,

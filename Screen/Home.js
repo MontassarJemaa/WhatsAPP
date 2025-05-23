@@ -12,9 +12,11 @@ export default function Home(props) {
   const iduser = props.route.params.iduser;
   // Récupérer l'objet profileImage s'il existe
   const profileImage = props.route.params.profileImage || null;
+  // Récupérer l'écran initial depuis les paramètres (par défaut ListComptes)
+  const initialScreen = props.route.params.screen || "ListComptes";
   return (
     <Tab.Navigator
-      initialRouteName="ListComptes"
+      initialRouteName={initialScreen}
       activeColor="#5fb39d"  // Icônes/texte actifs en vert menthe clair
       inactiveColor="#b0b0b0" // Icônes/texte inactifs gris clair
       barStyle={{

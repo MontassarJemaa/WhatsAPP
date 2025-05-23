@@ -33,7 +33,10 @@ export default function LoginScreen({ navigation }) {
         const iduser = auth.currentUser.uid;
         const ref_uncompte = ref_listcompte.child(iduser);
         ref_uncompte.update({ id: iduser, connected: true });
-        navigation.navigate("Home", { iduser });
+        navigation.navigate("Home", {
+          iduser,
+          screen: "MonCompte"
+        });
       })
       .catch((error) => {
         alert(error.message);

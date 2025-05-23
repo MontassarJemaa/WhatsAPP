@@ -641,6 +641,9 @@ export default function MonCompte(props) {
                     console.log("Données à mettre à jour:", updateData);
                     await ref_uncompte.update(updateData);
                     alert("✅ Compte enregistré !");
+
+                    // Naviguer vers ListComptes après sauvegarde
+                    props.navigation.navigate("ListComptes");
                   }
                 } catch (err) {
                   console.error(err);

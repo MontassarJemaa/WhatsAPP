@@ -60,14 +60,17 @@ export default function NewCompte({ navigation }) {
 
         await ref_uncompte.set(userData);
 
-        // Naviguer vers l'écran Home
-        navigation.replace("Home", { iduser });
-        Alert.alert("Succès", "Compte créé avec succès !");
+        // Déconnecter l'utilisateur après création du compte
+        await auth.signOut();
+
+        // Naviguer vers la page de connexion
+        navigation.navigate("Authentification");
+        Alert.alert("Succès", "Compte créé ! Veuillez vous connecter.");
       } catch (error) {
         Alert.alert("Erreur", error.message);
       }
     } else {
-      Alert.alert("Erreur", "Vérifiez les mots de passe");
+      Alert.alert("Erreur", "Mots de passe différents");
     }
   };
 
