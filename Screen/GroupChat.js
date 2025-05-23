@@ -17,10 +17,11 @@ import {
   Modal,
   Alert
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import firebase from "../Config";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
+import { Audio } from "expo-av";
 
 export default function GroupChat({ route, navigation }) {
   const { iduser, groupId, groupName } = route.params;
@@ -34,7 +35,22 @@ export default function GroupChat({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+
+  // États pour les messages vocaux
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState({});
+  const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null);
+
+  // États pour les réactions emoji
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+
+  // Refs
   const flatListRef = useRef(null);
+  const recordingTimerRef = useRef(null);
 
   // Référence à la base de données Firebase
   const groupsRef = firebase.database().ref(`groups/${groupId}`);
@@ -143,7 +159,7 @@ export default function GroupChat({ route, navigation }) {
     }
   };
 
-  // Fonction pour envoyer un message
+  // Fonction pour envoyer un message texte
   const sendMessage = async () => {
     if (newMessage.trim() === "" || !userInfo) return;
 
@@ -162,7 +178,9 @@ export default function GroupChat({ route, navigation }) {
         senderName: userInfo.pseudo || "Utilisateur",
         senderImage: userInfo.urlimage || null,
         timestamp: Date.now(),
-        isImage: false
+        isImage: false,
+        isAudio: false,
+        reactions: {}
       };
 
       // Enregistrer le message dans la base de données
@@ -209,7 +227,272 @@ export default function GroupChat({ route, navigation }) {
     }
   };
 
-  // Fonction pour sélectionner et envoyer une image
+  // Fonction pour démarrer l'enregistrement audio
+  const startRecording = async () => {
+    try {
+      console.log("Démarrage de l'enregistrement...");
+
+      // Demander les permissions
+      console.log("Demande des permissions...");
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission refusée", "Vous devez autoriser l'accès au microphone pour enregistrer des messages vocaux.");
+        return;
+      }
+      console.log("Permissions accordées");
+
+      // Configurer l'audio pour l'enregistrement
+      console.log("Configuration de l'audio...");
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: 1, // 1 = DO_NOT_MIX
+        interruptionModeAndroid: 1, // 1 = DO_NOT_MIX
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log("Audio configuré");
+
+      // Créer un nouvel enregistrement
+      console.log("Création de l'enregistrement...");
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      console.log("Enregistrement créé");
+
+      setRecording(recording);
+      setIsRecording(true);
+
+      // Démarrer le timer pour la durée d'enregistrement
+      setRecordingDuration(0);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          // Arrêter automatiquement l'enregistrement après 30 secondes
+          if (newDuration >= 30) {
+            stopRecording();
+            return 30;
+          }
+          return newDuration;
+        });
+      }, 1000);
+      console.log("Enregistrement démarré avec succès");
+
+    } catch (error) {
+      console.error("Erreur lors du démarrage de l'enregistrement:", error);
+      Alert.alert("Erreur", "Impossible de démarrer l'enregistrement: " + error.message);
+    }
+  };
+
+  // Fonction pour arrêter l'enregistrement et envoyer le message vocal
+  const stopRecording = async () => {
+    try {
+      console.log("Arrêt de l'enregistrement...");
+      if (!recording) {
+        console.log("Aucun enregistrement en cours");
+        return;
+      }
+
+      // Arrêter le timer
+      if (recordingTimerRef.current) {
+        console.log("Arrêt du timer");
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+
+      // Arrêter l'enregistrement
+      console.log("Arrêt de l'enregistrement audio");
+      await recording.stopAndUnloadAsync();
+      setIsRecording(false);
+
+      // Récupérer l'URI de l'enregistrement
+      console.log("Récupération de l'URI de l'enregistrement");
+      const uri = recording.getURI();
+      console.log("URI de l'enregistrement:", uri);
+      setRecording(null);
+
+      // Si l'enregistrement est trop court (moins de 1 seconde), ne pas l'envoyer
+      if (recordingDuration < 1) {
+        console.log("Enregistrement trop court");
+        Alert.alert("Enregistrement trop court", "L'enregistrement doit durer au moins 1 seconde.");
+        return;
+      }
+
+      // Envoyer le message vocal
+      console.log("Envoi du message vocal");
+      await sendVoiceMessage(uri, recordingDuration);
+      console.log("Message vocal envoyé avec succès");
+
+      // Réinitialiser la durée d'enregistrement
+      setRecordingDuration(0);
+
+    } catch (error) {
+      console.error("Erreur lors de l'arrêt de l'enregistrement:", error);
+      Alert.alert("Erreur", "Impossible d'arrêter l'enregistrement: " + error.message);
+      setIsRecording(false);
+      setRecording(null);
+      setRecordingDuration(0);
+    }
+  };
+
+  // Fonction pour envoyer un message vocal
+  const sendVoiceMessage = async (uri, duration) => {
+    if (!userInfo) return;
+
+    try {
+      console.log("Début de l'envoi du message vocal");
+      setSending(true);
+
+      // Vérifier que l'URI est valide
+      if (!uri) {
+        throw new Error("URI de l'enregistrement invalide");
+      }
+
+      // Télécharger l'audio vers le stockage local
+      const timestamp = Date.now();
+      const fileName = FileSystem.documentDirectory + `voice_message_${groupId}_${timestamp}.m4a`;
+
+      // Copier l'audio vers le stockage local
+      await FileSystem.copyAsync({
+        from: uri,
+        to: fileName
+      });
+
+      // Créer un nouvel ID de message
+      const newMessageRef = messagesRef.push();
+      const messageId = newMessageRef.key;
+
+      // Créer le message
+      const messageData = {
+        id: messageId,
+        text: "🎤 Message vocal",
+        audioUrl: fileName,
+        audioDuration: duration,
+        senderId: iduser,
+        senderName: userInfo.pseudo || "Utilisateur",
+        senderImage: userInfo.urlimage || null,
+        timestamp: Date.now(),
+        isImage: false,
+        isAudio: true,
+        reactions: {}
+      };
+
+      // Enregistrer le message dans la base de données
+      await newMessageRef.set(messageData);
+
+      // Mettre à jour le dernier message du groupe
+      await groupsRef.update({
+        lastMessage: {
+          text: "🎤 Message vocal",
+          senderId: iduser,
+          senderName: userInfo.pseudo || "Utilisateur",
+          timestamp: Date.now()
+        }
+      });
+
+      // Incrémenter le compteur de messages non lus pour tous les membres sauf l'expéditeur
+      if (groupInfo && groupInfo.members) {
+        const memberIds = Object.keys(groupInfo.members).filter(id => groupInfo.members[id] && id !== iduser);
+        memberIds.forEach(async (memberId) => {
+          const unreadCountRef = firebase.database().ref(`groups/${groupId}/unreadCount/${memberId}`);
+          const snapshot = await unreadCountRef.once("value");
+          const currentCount = snapshot.val() || 0;
+          await unreadCountRef.set(currentCount + 1);
+        });
+      }
+
+      setSending(false);
+
+      // Faire défiler jusqu'au dernier message
+      if (flatListRef.current) {
+        setTimeout(() => {
+          flatListRef.current.scrollToEnd({ animated: true });
+        }, 100);
+      }
+
+      console.log("Message vocal enregistré avec succès dans Firebase");
+    } catch (error) {
+      console.error("Erreur lors de l'envoi du message vocal:", error);
+      setSending(false);
+      Alert.alert("Erreur", "Impossible d'envoyer le message vocal: " + error.message);
+    }
+  };
+
+  // Fonction pour lire un message vocal
+  const playVoiceMessage = async (audioUri, messageId) => {
+    try {
+      console.log("Tentative de lecture du message vocal:", audioUri);
+
+      // Configurer l'audio pour la lecture
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: 1, // 1 = DO_NOT_MIX
+        interruptionModeAndroid: 1, // 1 = DO_NOT_MIX
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      // Si un son est déjà en cours de lecture, l'arrêter
+      if (sound) {
+        console.log("Arrêt du son précédent");
+        await sound.unloadAsync();
+        setSound(null);
+      }
+
+      // Si le message est déjà en cours de lecture, l'arrêter
+      if (isPlaying[messageId]) {
+        console.log("Le message est déjà en cours de lecture, on l'arrête");
+        setIsPlaying(prev => ({ ...prev, [messageId]: false }));
+        setCurrentlyPlayingId(null);
+        return;
+      }
+
+      console.log("Chargement du son:", audioUri);
+
+      // Charger le son
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true, volume: 1.0 }
+      );
+
+      console.log("Son chargé avec succès");
+
+      setSound(newSound);
+      setIsPlaying(prev => ({ ...prev, [messageId]: true }));
+      setCurrentlyPlayingId(messageId);
+
+      // Quand le son est terminé
+      newSound.setOnPlaybackStatusUpdate(status => {
+        console.log("Statut de lecture:", status);
+        if (status.didJustFinish) {
+          console.log("Lecture terminée");
+          setIsPlaying(prev => ({ ...prev, [messageId]: false }));
+          setCurrentlyPlayingId(null);
+          newSound.unloadAsync();
+          setSound(null);
+        }
+      });
+
+    } catch (error) {
+      console.error("Erreur lors de la lecture du message vocal:", error);
+      Alert.alert("Erreur", "Impossible de lire le message vocal: " + error.message);
+    }
+  };
+
+  // Fonction pour formater la durée d'un enregistrement
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  };
+
+  // Fonction pour sélectionner et envoyer une image depuis la galerie
   const pickAndSendImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -233,6 +516,34 @@ export default function GroupChat({ route, navigation }) {
     } catch (error) {
       console.error("Erreur lors de la sélection de l'image:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'image");
+    } finally {
+      setShowImagePicker(false);
+    }
+  };
+
+  // Fonction pour prendre et envoyer une photo avec la caméra
+  const takeAndSendPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          "Permission nécessaire",
+          "Vous devez autoriser l'accès à la caméra pour prendre des photos."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await sendImageMessage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la prise de photo:", error);
+      Alert.alert("Erreur", "Impossible de prendre une photo: " + error.message);
     } finally {
       setShowImagePicker(false);
     }
@@ -337,6 +648,104 @@ export default function GroupChat({ route, navigation }) {
     }
   };
 
+  // Liste des emojis disponibles pour les réactions
+  const emojis = ["❤️", "😂", "👍", "😮", "😢"];
+
+  // Fonction pour ajouter ou supprimer une réaction à un message
+  const addReaction = (messageId, emoji) => {
+    try {
+      console.log(`Ajout/suppression de la réaction ${emoji} au message ${messageId}`);
+
+      // Référence au message
+      const messageRef = messagesRef.child(messageId);
+
+      // Vérifier si l'utilisateur a déjà réagi avec cet emoji
+      messageRef.child("reactions").child(iduser).once("value", (snapshot) => {
+        const currentReaction = snapshot.val();
+
+        if (currentReaction === emoji) {
+          // Si l'utilisateur a déjà réagi avec cet emoji, supprimer la réaction
+          console.log("Suppression de la réaction existante");
+          messageRef.child("reactions").child(iduser).remove();
+        } else {
+          // Sinon, ajouter ou mettre à jour la réaction
+          console.log("Ajout d'une nouvelle réaction");
+          messageRef.child("reactions").child(iduser).set(emoji);
+        }
+      });
+
+      // Fermer le sélecteur d'emoji
+      setShowEmojiPicker(false);
+
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de la réaction:", error);
+      Alert.alert("Erreur", "Impossible d'ajouter la réaction");
+    }
+  };
+
+  // Fonction pour afficher les réactions d'un message
+  const renderReactions = (reactions, isCurrentUser, messageId) => {
+    if (!reactions) return null;
+
+    // Regrouper les réactions par emoji
+    const reactionsByEmoji = {};
+    Object.entries(reactions).forEach(([userId, emoji]) => {
+      if (!reactionsByEmoji[emoji]) {
+        reactionsByEmoji[emoji] = [];
+      }
+      reactionsByEmoji[emoji].push(userId);
+    });
+
+    // Obtenir le nombre total de réactions
+    const totalReactions = Object.values(reactions).length;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.reactionsContainer,
+          isCurrentUser ? styles.currentUserReactions : styles.otherUserReactions,
+        ]}
+        onPress={() => {
+          // Afficher les détails des réactions (qui a réagi avec quoi)
+          if (totalReactions > 0) {
+            Alert.alert(
+              "Réactions",
+              Object.entries(reactionsByEmoji)
+                .map(([emoji, userIds]) => {
+                  const userCount = userIds.length;
+                  return `${emoji} : ${userCount} ${userCount > 1 ? 'personnes' : 'personne'}`;
+                })
+                .join('\n'),
+              [{ text: "OK" }]
+            );
+          }
+        }}
+      >
+        {Object.entries(reactionsByEmoji).map(([emoji, userIds]) => (
+          <View key={emoji} style={styles.reactionBubble}>
+            <Text style={styles.reactionEmoji}>{emoji}</Text>
+            {userIds.length > 1 && (
+              <Text style={styles.reactionCount}>{userIds.length}</Text>
+            )}
+          </View>
+        ))}
+
+        {/* Bouton pour ajouter une réaction si l'utilisateur n'a pas encore réagi */}
+        {!reactions[iduser] && (
+          <TouchableOpacity
+            style={styles.addReactionButton}
+            onPress={() => {
+              setSelectedMessageId(messageId);
+              setShowEmojiPicker(true);
+            }}
+          >
+            <Ionicons name="add-circle-outline" size={16} color="#999" />
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   // Rendu d'un message
   const renderMessage = ({ item }) => {
     const isCurrentUser = item.senderId === iduser;
@@ -373,33 +782,98 @@ export default function GroupChat({ route, navigation }) {
           </View>
         )}
 
-        <View style={[
-          styles.messageBubble,
-          isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
-        ]}>
-          {!isCurrentUser && (
-            <Text style={styles.senderName}>{sender.pseudo || "Utilisateur"}</Text>
-          )}
+        <View style={styles.messageContent}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onLongPress={() => {
+              setSelectedMessageId(item.id);
+              setShowEmojiPicker(true);
+            }}
+          >
+            <View style={[
+              styles.messageBubble,
+              isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
+            ]}>
+              {!isCurrentUser && (
+                <Text style={styles.senderName}>{sender.pseudo || "Utilisateur"}</Text>
+              )}
 
-          {item.isImage ? (
-            <TouchableOpacity
-              onPress={() => {
-                // Afficher l'image en plein écran
-                // (Fonctionnalité à implémenter)
-              }}
-            >
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.messageImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          ) : (
-            <Text style={styles.messageText}>{item.text}</Text>
-          )}
+              {item.isImage ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    // Afficher l'image en plein écran
+                    // (Fonctionnalité à implémenter)
+                  }}
+                >
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ) : item.isAudio ? (
+                <TouchableOpacity
+                  style={styles.audioContainer}
+                  onPress={() => playVoiceMessage(item.audioUrl, item.id)}
+                >
+                  <View style={styles.audioContent}>
+                    <MaterialCommunityIcons
+                      name={isPlaying[item.id] ? "pause-circle" : "play-circle"}
+                      size={36}
+                      color={isCurrentUser ? "#fff" : "#4ca38d"}
+                    />
+                    <View style={styles.audioInfo}>
+                      <View style={styles.audioWaveform}>
+                        {[...Array(8)].map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.audioWave,
+                              isCurrentUser ? styles.audioWaveCurrentUser : styles.audioWaveOtherUser,
+                              { height: 4 + Math.random() * 12 }
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <Text
+                        style={[
+                          styles.audioDuration,
+                          isCurrentUser ? { color: "white" } : { color: "#333" }
+                        ]}
+                      >
+                        {formatDuration(item.audioDuration || 0)}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.messageText}>{item.text}</Text>
+              )}
 
-          <Text style={styles.messageTime}>{formatDate(item.timestamp)}</Text>
+              <Text style={styles.messageTime}>{formatDate(item.timestamp)}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Afficher les réactions */}
+          {renderReactions(item.reactions, isCurrentUser, item.id)}
         </View>
+
+        {isCurrentUser && (
+          <View style={styles.avatarContainer}>
+            {userInfo && userInfo.urlimage ? (
+              <Image
+                source={{ uri: userInfo.urlimage }}
+                style={styles.avatar}
+                defaultSource={require("../assets/profile.png")}
+              />
+            ) : (
+              <Image
+                source={require("../assets/profile.png")}
+                style={styles.avatar}
+              />
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -619,36 +1093,64 @@ export default function GroupChat({ route, navigation }) {
 
           {/* Zone de saisie de message */}
           <View style={styles.inputContainer}>
-            <TouchableOpacity
-              style={styles.attachButton}
-              onPress={() => setShowImagePicker(true)}
-            >
-              <Ionicons name="image-outline" size={24} color="rgba(255, 255, 255, 0.7)" />
-            </TouchableOpacity>
+            {isRecording ? (
+              <View style={styles.recordingContainer}>
+                <View style={styles.recordingInfo}>
+                  <View style={styles.recordingDot} />
+                  <Text style={styles.recordingText}>
+                    Enregistrement en cours... {formatDuration(recordingDuration)}
+                  </Text>
+                  <Text style={styles.recordingLimit}>
+                    / {formatDuration(30)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.recordingStopButton}
+                  onPress={stopRecording}
+                >
+                  <Ionicons name="stop-circle" size={48} color="#e74c3c" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.inputWrapper}>
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={() => setShowImagePicker(true)}
+                  disabled={sending}
+                >
+                  <Ionicons name="image-outline" size={24} color="rgba(255, 255, 255, 0.7)" />
+                </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Écrivez votre message..."
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              value={newMessage}
-              onChangeText={setNewMessage}
-              multiline
-            />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Écrivez votre message..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  value={newMessage}
+                  onChangeText={setNewMessage}
+                  multiline
+                  editable={!sending}
+                />
 
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (newMessage.trim() === "" || sending) ? styles.sendButtonDisabled : null
-              ]}
-              onPress={sendMessage}
-              disabled={newMessage.trim() === "" || sending}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Ionicons name="send" size={20} color="white" />
-              )}
-            </TouchableOpacity>
+                {sending ? (
+                  <ActivityIndicator size="small" color="#ffffff" style={styles.sendButton} />
+                ) : newMessage.trim() !== "" ? (
+                  <TouchableOpacity
+                    style={styles.sendButton}
+                    onPress={sendMessage}
+                  >
+                    <Ionicons name="send" size={20} color="white" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.sendButton}
+                    onPress={startRecording}
+                    onLongPress={startRecording}
+                  >
+                    <Ionicons name="mic" size={24} color="white" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </KeyboardAvoidingView>
 
@@ -667,7 +1169,15 @@ export default function GroupChat({ route, navigation }) {
                   onPress={pickAndSendImage}
                 >
                   <Ionicons name="image-outline" size={30} color="white" />
-                  <Text style={styles.imagePickerOptionText}>Choisir une image</Text>
+                  <Text style={styles.imagePickerOptionText}>Galerie</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.imagePickerOption}
+                  onPress={takeAndSendPhoto}
+                >
+                  <Ionicons name="camera-outline" size={30} color="white" />
+                  <Text style={styles.imagePickerOptionText}>Appareil photo</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -683,6 +1193,48 @@ export default function GroupChat({ route, navigation }) {
 
         {/* Modal d'informations du groupe */}
         {renderInfoModal()}
+
+        {/* Modal pour sélectionner un emoji */}
+        <Modal
+          transparent={true}
+          visible={showEmojiPicker}
+          onRequestClose={() => setShowEmojiPicker(false)}
+          animationType="fade"
+        >
+          <TouchableOpacity
+            style={styles.emojiModalBackground}
+            activeOpacity={1}
+            onPress={() => setShowEmojiPicker(false)}
+          >
+            <View style={styles.emojiPicker}>
+              <View style={styles.emojiPickerHeader}>
+                <Text style={styles.emojiPickerTitle}>Réagir</Text>
+                <TouchableOpacity
+                  onPress={() => setShowEmojiPicker(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close-circle" size={24} color="#999" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.emojiRow}>
+                {emojis.map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={styles.emojiButton}
+                    onPress={() => addReaction(selectedMessageId, emoji)}
+                  >
+                    <Text style={styles.emoji}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.emojiPickerFooter}>
+                Appuyez une seconde fois pour supprimer la réaction
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ImageBackground>
     </TouchableWithoutFeedback>
   );
@@ -692,6 +1244,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#121212",
+  },
+  messageContent: {
+    maxWidth: "75%",
   },
   header: {
     flexDirection: "row",
@@ -857,26 +1412,31 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "rgba(30, 30, 30, 0.9)",
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
   },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(60, 60, 60, 0.5)",
+    borderRadius: 25,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   attachButton: {
     padding: 8,
-    marginRight: 5,
+    marginRight: 2,
   },
   input: {
     flex: 1,
-    backgroundColor: "rgba(60, 60, 60, 0.5)",
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     color: "white",
     maxHeight: 100,
+    fontSize: 16,
   },
   sendButton: {
     backgroundColor: "rgb(88, 190, 85)", // Vert plus intense
@@ -885,7 +1445,7 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 10,
+    marginLeft: 5,
   },
   sendButtonDisabled: {
     backgroundColor: "rgba(88, 190, 85, 0.5)", // Vert plus intense mais transparent
@@ -1029,5 +1589,195 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Styles pour les messages vocaux
+  audioContainer: {
+    marginTop: 5,
+    marginBottom: 5,
+    width: '100%',
+    minWidth: 150,
+  },
+  audioContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 5,
+  },
+  audioInfo: {
+    flex: 1,
+    marginLeft: 10,
+    marginRight: 5,
+  },
+  audioWaveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 20,
+    marginBottom: 5,
+    justifyContent: 'space-between',
+  },
+  audioWave: {
+    width: 3,
+    marginHorizontal: 1,
+    borderRadius: 3,
+  },
+  audioWaveCurrentUser: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  audioWaveOtherUser: {
+    backgroundColor: 'rgba(76, 163, 141, 0.7)',
+  },
+  audioDuration: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  // Styles pour l'enregistrement
+  recordingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+    borderRadius: 25,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.4)',
+    marginVertical: 5,
+  },
+  recordingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  recordingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#e74c3c',
+    marginRight: 10,
+    // Animation de pulsation (simulée avec une ombre)
+    shadowColor: '#e74c3c',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  recordingText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  recordingLimit: {
+    color: 'rgba(231, 76, 60, 0.7)',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  recordingStopButton: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  // Styles pour les réactions
+  reactionsContainer: {
+    flexDirection: "row",
+    marginTop: 5,
+  },
+  currentUserReactions: {
+    justifyContent: "flex-end",
+  },
+  otherUserReactions: {
+    justifyContent: "flex-start",
+  },
+  reactionBubble: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 15,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginRight: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  reactionEmoji: {
+    fontSize: 16,
+  },
+  reactionCount: {
+    fontSize: 12,
+    marginLeft: 3,
+    color: "#555",
+    fontWeight: "bold",
+  },
+  addReactionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 5,
+  },
+  // Styles pour le modal emoji
+  emojiModalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emojiPicker: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxWidth: 350,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  emojiPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    paddingBottom: 10,
+  },
+  emojiPickerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  emojiRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  emojiButton: {
+    padding: 12,
+    borderRadius: 50,
+    marginBottom: 10,
+    backgroundColor: "#f8f8f8",
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 5,
+  },
+  emoji: {
+    fontSize: 24,
+  },
+  emojiPickerFooter: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 5,
+    fontStyle: "italic",
   },
 });
