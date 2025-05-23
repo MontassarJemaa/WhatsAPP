@@ -16,8 +16,9 @@ import {
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import firebase from "../Config";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Audio } from "expo-av";
 
 const database = firebase.database();
 const ref_database = database.ref();
@@ -43,9 +44,17 @@ const Chat = (props) => {
   const [istyping, setistyping] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const [secondUserInfo, setSecondUserInfo] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState({});
+  const [currentlyPlayingId, setCurrentlyPlayingId] = useState(null);
+  const recordingTimerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   // Lire état second is typing
@@ -149,7 +158,7 @@ const Chat = (props) => {
     setShowEmojiPicker(false);
   };
 
-  // Fonction pour sélectionner une image
+  // Fonction pour sélectionner une image depuis la galerie
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -168,6 +177,34 @@ const Chat = (props) => {
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de sélectionner l'image");
+    } finally {
+      setShowImagePicker(false);
+    }
+  };
+
+  // Fonction pour prendre une photo avec la caméra
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission refusée", "Vous devez autoriser l'accès à la caméra pour prendre des photos.");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        await sendImageMessage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la prise de photo:", error);
+      Alert.alert("Erreur", "Impossible de prendre une photo: " + error.message);
+    } finally {
+      setShowImagePicker(false);
     }
   };
 
@@ -190,6 +227,229 @@ const Chat = (props) => {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Fonction pour démarrer l'enregistrement audio
+  const startRecording = async () => {
+    try {
+      console.log("Démarrage de l'enregistrement...");
+
+      // Demander les permissions
+      console.log("Demande des permissions...");
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission refusée", "Vous devez autoriser l'accès au microphone pour enregistrer des messages vocaux.");
+        return;
+      }
+      console.log("Permissions accordées");
+
+      // Configurer l'audio pour l'enregistrement
+      console.log("Configuration de l'audio...");
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        // Utiliser des valeurs numériques directes au lieu des constantes
+        interruptionModeIOS: 1, // 1 = DO_NOT_MIX
+        interruptionModeAndroid: 1, // 1 = DO_NOT_MIX
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log("Audio configuré");
+
+      // Créer un nouvel enregistrement avec des options simplifiées
+      console.log("Création de l'enregistrement...");
+
+      // Utiliser les options prédéfinies de haute qualité
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      console.log("Enregistrement créé");
+
+      setRecording(recording);
+      setIsRecording(true);
+
+      // Démarrer le timer pour la durée d'enregistrement
+      setRecordingDuration(0);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          // Arrêter automatiquement l'enregistrement après 30 secondes
+          if (newDuration >= 30) {
+            stopRecording();
+            return 30;
+          }
+          return newDuration;
+        });
+      }, 1000);
+      console.log("Enregistrement démarré avec succès");
+
+    } catch (error) {
+      console.error("Erreur lors du démarrage de l'enregistrement:", error);
+      Alert.alert("Erreur", "Impossible de démarrer l'enregistrement: " + error.message);
+    }
+  };
+
+  // Fonction pour arrêter l'enregistrement et envoyer le message vocal
+  const stopRecording = async () => {
+    try {
+      console.log("Arrêt de l'enregistrement...");
+      if (!recording) {
+        console.log("Aucun enregistrement en cours");
+        return;
+      }
+
+      // Arrêter le timer
+      if (recordingTimerRef.current) {
+        console.log("Arrêt du timer");
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+
+      // Arrêter l'enregistrement
+      console.log("Arrêt de l'enregistrement audio");
+      await recording.stopAndUnloadAsync();
+      setIsRecording(false);
+
+      // Récupérer l'URI de l'enregistrement
+      console.log("Récupération de l'URI de l'enregistrement");
+      const uri = recording.getURI();
+      console.log("URI de l'enregistrement:", uri);
+      setRecording(null);
+
+      // Si l'enregistrement est trop court (moins de 1 seconde), ne pas l'envoyer
+      if (recordingDuration < 1) {
+        console.log("Enregistrement trop court");
+        Alert.alert("Enregistrement trop court", "L'enregistrement doit durer au moins 1 seconde.");
+        return;
+      }
+
+      // Envoyer le message vocal
+      console.log("Envoi du message vocal");
+      await sendVoiceMessage(uri, recordingDuration);
+      console.log("Message vocal envoyé avec succès");
+
+      // Réinitialiser la durée d'enregistrement
+      setRecordingDuration(0);
+
+    } catch (error) {
+      console.error("Erreur lors de l'arrêt de l'enregistrement:", error);
+      Alert.alert("Erreur", "Impossible d'arrêter l'enregistrement: " + error.message);
+      setIsRecording(false);
+      setRecording(null);
+      setRecordingDuration(0);
+    }
+  };
+
+  // Fonction pour envoyer un message vocal
+  const sendVoiceMessage = async (uri, duration) => {
+    try {
+      console.log("Début de l'envoi du message vocal");
+      setIsUploading(true);
+
+      // Vérifier que l'URI est valide
+      if (!uri) {
+        throw new Error("URI de l'enregistrement invalide");
+      }
+
+      console.log("Création d'une nouvelle entrée dans la base de données");
+      const key = ref_messages.push().key;
+
+      // Enregistrer le message dans Firebase
+      console.log("Enregistrement du message vocal dans Firebase");
+      await ref_messages.child(key).set({
+        contenu: "",
+        audioUri: uri,
+        audioDuration: duration,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        sender: currentid,
+        receiver: secondid,
+        reactions: {},
+        seen: false,
+        messageType: "audio" // Ajouter un type pour faciliter l'identification
+      });
+
+      console.log("Message vocal enregistré avec succès dans Firebase");
+    } catch (error) {
+      console.error("Erreur lors de l'envoi du message vocal:", error);
+      Alert.alert("Erreur", "Impossible d'envoyer le message vocal: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Fonction pour lire un message vocal
+  const playVoiceMessage = async (audioUri, messageId) => {
+    try {
+      console.log("Tentative de lecture du message vocal:", audioUri);
+
+      // Configurer l'audio pour la lecture
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        // Utiliser des valeurs numériques directes au lieu des constantes
+        interruptionModeIOS: 1, // 1 = DO_NOT_MIX
+        interruptionModeAndroid: 1, // 1 = DO_NOT_MIX
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      // Si un son est déjà en cours de lecture, l'arrêter
+      if (sound) {
+        console.log("Arrêt du son précédent");
+        await sound.unloadAsync();
+        setSound(null);
+      }
+
+      // Si le message est déjà en cours de lecture, l'arrêter
+      if (isPlaying[messageId]) {
+        console.log("Le message est déjà en cours de lecture, on l'arrête");
+        setIsPlaying(prev => ({ ...prev, [messageId]: false }));
+        setCurrentlyPlayingId(null);
+        return;
+      }
+
+      console.log("Chargement du son:", audioUri);
+
+      // Charger le son
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: audioUri },
+        { shouldPlay: true, volume: 1.0 }
+      );
+
+      console.log("Son chargé avec succès");
+
+      setSound(newSound);
+      setIsPlaying(prev => ({ ...prev, [messageId]: true }));
+      setCurrentlyPlayingId(messageId);
+
+      // Quand le son est terminé
+      newSound.setOnPlaybackStatusUpdate(status => {
+        console.log("Statut de lecture:", status);
+        if (status.didJustFinish) {
+          console.log("Lecture terminée");
+          setIsPlaying(prev => ({ ...prev, [messageId]: false }));
+          setCurrentlyPlayingId(null);
+          newSound.unloadAsync();
+          setSound(null);
+        }
+      });
+
+    } catch (error) {
+      console.error("Erreur lors de la lecture du message vocal:", error);
+      Alert.alert("Erreur", "Impossible de lire le message vocal: " + error.message);
+    }
+  };
+
+  // Fonction pour formater la durée d'un enregistrement
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
 
@@ -366,6 +626,43 @@ const Chat = (props) => {
                             />
                           </View>
                         )}
+
+                        {item.audioUri && (
+                          <TouchableOpacity
+                            style={styles.audioContainer}
+                            onPress={() => playVoiceMessage(item.audioUri, item.id)}
+                          >
+                            <View style={styles.audioContent}>
+                              <MaterialCommunityIcons
+                                name={isPlaying[item.id] ? "pause-circle" : "play-circle"}
+                                size={36}
+                                color={isCurrentUser ? "#fff" : "#4ca38d"}
+                              />
+                              <View style={styles.audioInfo}>
+                                <View style={styles.audioWaveform}>
+                                  {[...Array(8)].map((_, i) => (
+                                    <View
+                                      key={i}
+                                      style={[
+                                        styles.audioWave,
+                                        isCurrentUser ? styles.audioWaveCurrentUser : styles.audioWaveOtherUser,
+                                        { height: 4 + Math.random() * 12 }
+                                      ]}
+                                    />
+                                  ))}
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.audioDuration,
+                                    isCurrentUser ? styles.currentUserText : styles.otherUserText
+                                  ]}
+                                >
+                                  {formatDuration(item.audioDuration || 0)}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        )}
                       </View>
                       <View style={styles.messageFooter}>
                         <Text style={styles.messageTime}>{item.time}</Text>
@@ -406,66 +703,98 @@ const Chat = (props) => {
         {/* Nouvelle zone de saisie */}
         <View style={styles.inputContainer}>
           {istyping && <Text style={styles.typingIndicator}>Typing...</Text>}
-          <View style={styles.inputWrapper}>
-            <TouchableOpacity
-              style={styles.attachButton}
-              onPress={pickImage}
-              disabled={isUploading}
-            >
-              <Ionicons
-                name="image-outline"
-                size={24}
-                color="#4ca38d"
-              />
-            </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Message..."
-              placeholderTextColor="#999"
-              value={msg}
-              onChangeText={(text) => {
-                setmsg(text);
-                // Mettre à jour l'état de frappe seulement si l'utilisateur est en train de taper
-                if (text.length > 0) {
-                  ref_currentistyping.set(true);
-                } else {
-                  ref_currentistyping.set(false);
-                }
-              }}
-              onFocus={() => {
-                if (msg.length > 0) {
-                  ref_currentistyping.set(true);
-                }
-              }}
-              onBlur={() => {
-                ref_currentistyping.set(false);
-              }}
-              multiline
-              onSubmitEditing={() => {
-                handleSendMessage();
-                ref_currentistyping.set(false);
-              }}
-              textAlignVertical="center"
-              editable={!isUploading}
-            />
-
-            {isUploading ? (
-              <ActivityIndicator size="small" color="#4ca38d" style={styles.sendButton} />
-            ) : (
+          {isRecording ? (
+            <View style={styles.recordingContainer}>
+              <View style={styles.recordingInfo}>
+                <View style={styles.recordingDot} />
+                <Text style={styles.recordingText}>
+                  Enregistrement en cours... {formatDuration(recordingDuration)}
+                </Text>
+                <Text style={styles.recordingLimit}>
+                  / {formatDuration(30)}
+                </Text>
+              </View>
               <TouchableOpacity
-                style={styles.sendButton}
-                onPress={handleSendMessage}
-                disabled={!msg}
+                style={styles.recordingStopButton}
+                onPress={stopRecording}
+              >
+                <Ionicons name="stop-circle" size={48} color="#e74c3c" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.inputWrapper}>
+              <TouchableOpacity
+                style={styles.attachButton}
+                onPress={() => setShowImagePicker(true)}
+                disabled={isUploading}
               >
                 <Ionicons
-                  name="send"
+                  name="image-outline"
                   size={24}
-                  color={msg ? "#4ca38d" : "#ddd"}
+                  color="rgba(255, 255, 255, 0.7)"
                 />
               </TouchableOpacity>
-            )}
-          </View>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Message..."
+                placeholderTextColor="#999"
+                value={msg}
+                onChangeText={(text) => {
+                  setmsg(text);
+                  // Mettre à jour l'état de frappe seulement si l'utilisateur est en train de taper
+                  if (text.length > 0) {
+                    ref_currentistyping.set(true);
+                  } else {
+                    ref_currentistyping.set(false);
+                  }
+                }}
+                onFocus={() => {
+                  if (msg.length > 0) {
+                    ref_currentistyping.set(true);
+                  }
+                }}
+                onBlur={() => {
+                  ref_currentistyping.set(false);
+                }}
+                multiline
+                onSubmitEditing={() => {
+                  handleSendMessage();
+                  ref_currentistyping.set(false);
+                }}
+                textAlignVertical="center"
+                editable={!isUploading}
+              />
+
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#4ca38d" style={styles.sendButton} />
+              ) : msg ? (
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={handleSendMessage}
+                >
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={startRecording}
+                  onLongPress={startRecording}
+                >
+                  <Ionicons
+                    name="mic"
+                    size={24}
+                    color="white"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
 
@@ -509,6 +838,46 @@ const Chat = (props) => {
             </Text>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Modal pour sélectionner une image */}
+      <Modal
+        visible={showImagePicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowImagePicker(false)}
+      >
+        <View style={styles.imagePickerModalContainer}>
+          <TouchableOpacity
+            style={styles.imagePickerBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowImagePicker(false)}
+          />
+          <View style={styles.imagePickerContent}>
+            <TouchableOpacity
+              style={styles.imagePickerOption}
+              onPress={pickImage}
+            >
+              <Ionicons name="image-outline" size={30} color="white" />
+              <Text style={styles.imagePickerOptionText}>Galerie</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.imagePickerOption}
+              onPress={takePhoto}
+            >
+              <Ionicons name="camera-outline" size={30} color="white" />
+              <Text style={styles.imagePickerOptionText}>Appareil photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.imagePickerCancelButton}
+              onPress={() => setShowImagePicker(false)}
+            >
+              <Text style={styles.imagePickerCancelText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </ImageBackground>
   );
@@ -649,11 +1018,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   inputContainer: {
-    padding: 10,
-    paddingTop: 5,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: "rgba(30, 30, 30, 0.9)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: "#2d5a4a",
+    borderTopColor: "rgba(255, 255, 255, 0.1)",
   },
   typingIndicator: {
     color: "#aaa",
@@ -664,27 +1033,31 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "rgba(60, 60, 60, 0.5)",
     borderRadius: 25,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: "#2d5a4a",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   attachButton: {
     padding: 8,
-    marginRight: 5,
+    marginRight: 2,
   },
   input: {
     flex: 1,
-    minHeight: 45,
-    maxHeight: 90,
-    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     color: "white",
-    textAlign: "left",
-    paddingVertical: 0,
+    maxHeight: 100,
+    fontSize: 16,
   },
   sendButton: {
-    padding: 8,
+    backgroundColor: "rgb(88, 190, 85)", // Vert plus intense
+    borderRadius: 25,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 5,
   },
   emojiModalBackground: {
     flex: 1,
@@ -791,6 +1164,132 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 5,
+  },
+  // Styles pour les messages vocaux
+  audioContainer: {
+    marginTop: 5,
+    marginBottom: 5,
+    width: '100%',
+    minWidth: 150,
+  },
+  audioContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 5,
+  },
+  audioInfo: {
+    flex: 1,
+    marginLeft: 10,
+    marginRight: 5,
+  },
+  audioWaveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 20,
+    marginBottom: 5,
+    justifyContent: 'space-between',
+  },
+  audioWave: {
+    width: 3,
+    marginHorizontal: 1,
+    borderRadius: 3,
+  },
+  audioWaveCurrentUser: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  audioWaveOtherUser: {
+    backgroundColor: 'rgba(76, 163, 141, 0.7)',
+  },
+  audioDuration: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  // Styles pour le modal de sélection d'image
+  imagePickerModalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  imagePickerBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  imagePickerContent: {
+    backgroundColor: "rgba(40, 40, 40, 0.9)",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  imagePickerOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  imagePickerOptionText: {
+    color: "white",
+    fontSize: 16,
+    marginLeft: 15,
+  },
+  imagePickerCancelButton: {
+    alignItems: "center",
+    paddingVertical: 15,
+    marginTop: 10,
+  },
+  imagePickerCancelText: {
+    color: "rgb(88, 190, 85)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Styles pour l'enregistrement
+  recordingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+    borderRadius: 25,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.4)',
+    marginVertical: 5,
+  },
+  recordingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  recordingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#e74c3c',
+    marginRight: 10,
+    // Animation de pulsation (simulée avec une ombre)
+    shadowColor: '#e74c3c',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  recordingText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  recordingLimit: {
+    color: 'rgba(231, 76, 60, 0.7)',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  recordingStopButton: {
+    padding: 8,
+    marginLeft: 10,
   },
 });
 
