@@ -39,10 +39,8 @@ export default function CreateGroup({ route, navigation }) {
   const contactsRef = firebase.database().ref("List_comptes");
 
   useEffect(() => {
-    // Charger les contacts
     loadContacts();
 
-    // Nettoyer les écouteurs lors du démontage
     return () => {
       contactsRef.off();
     };
@@ -79,7 +77,6 @@ export default function CreateGroup({ route, navigation }) {
     }
   };
 
-  // Fonction pour sélectionner/désélectionner un contact
   const toggleContact = (contactId) => {
     setSelectedContacts(prev => {
       const newState = {
@@ -87,7 +84,6 @@ export default function CreateGroup({ route, navigation }) {
         [contactId]: !prev[contactId]
       };
 
-      // Mettre à jour le compteur de contacts sélectionnés
       const count = Object.values(newState).filter(Boolean).length;
       setSelectedCount(count);
 
@@ -95,7 +91,6 @@ export default function CreateGroup({ route, navigation }) {
     });
   };
 
-  // Fonction pour sélectionner une image de groupe
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -128,11 +123,9 @@ export default function CreateGroup({ route, navigation }) {
     try {
       setUploading(true);
 
-      // Créer un nom de fichier unique pour l'image locale
       const timestamp = Date.now();
       const fileName = FileSystem.documentDirectory + `group_${timestamp}.jpg`;
 
-      // Copier l'image vers le stockage local
       await FileSystem.copyAsync({
         from: uri,
         to: fileName
@@ -150,7 +143,6 @@ export default function CreateGroup({ route, navigation }) {
 
   // Fonction pour créer un nouveau groupe
   const createGroup = async () => {
-    // Vérifier que le nom du groupe est valide
     if (!groupName.trim()) {
       Alert.alert("Erreur", "Veuillez entrer un nom pour le groupe");
       return;
@@ -195,13 +187,10 @@ export default function CreateGroup({ route, navigation }) {
         members: members
       };
 
-      // Enregistrer le groupe dans la base de données
       await newGroupRef.set(groupData);
 
-      // Créer le nœud de messages pour ce groupe
       const messagesRef = firebase.database().ref(`group_messages/${groupId}`);
 
-      // Ajouter un message système pour indiquer la création du groupe
       const systemMessageRef = messagesRef.push();
       await systemMessageRef.set({
         id: systemMessageRef.key,
@@ -212,7 +201,6 @@ export default function CreateGroup({ route, navigation }) {
 
       setCreating(false);
 
-      // Naviguer vers la discussion de groupe
       navigation.replace("GroupChat", {
         iduser,
         groupId,
@@ -228,7 +216,6 @@ export default function CreateGroup({ route, navigation }) {
     }
   };
 
-  // Fonction pour fermer le clavier lorsqu'on clique en dehors
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
@@ -244,7 +231,6 @@ export default function CreateGroup({ route, navigation }) {
           barStyle="light-content"
         />
 
-        {/* En-tête */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -262,9 +248,7 @@ export default function CreateGroup({ route, navigation }) {
         >
           <TouchableWithoutFeedback onPress={dismissKeyboard}>
             <View style={styles.contentContainer}>
-          {/* En-tête avec image et nom du groupe */}
           <View style={styles.headerSection}>
-            {/* Image du groupe */}
             <TouchableOpacity
               style={styles.groupImagePicker}
               onPress={pickImage}
@@ -284,7 +268,6 @@ export default function CreateGroup({ route, navigation }) {
               )}
             </TouchableOpacity>
 
-            {/* Nom du groupe */}
             <TextInput
               style={styles.input}
               placeholder="Nom du groupe"
@@ -293,7 +276,6 @@ export default function CreateGroup({ route, navigation }) {
               onChangeText={setGroupName}
             />
 
-            {/* Titre de la liste des contacts */}
             <View style={styles.contactsTitleContainer}>
               <Text style={styles.contactsTitle}>Ajouter des participants</Text>
               <View style={[
@@ -306,7 +288,6 @@ export default function CreateGroup({ route, navigation }) {
             <Text style={styles.contactsSubtitle}>Sélectionnez au moins 2 contacts (minimum 3 participants au total)</Text>
           </View>
 
-          {/* Liste des contacts - Pas dans un ScrollView */}
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#ffffff" style={styles.loadingIndicator} />
@@ -326,7 +307,6 @@ export default function CreateGroup({ route, navigation }) {
                   ]}
                   onPress={() => toggleContact(item.id)}
                 >
-                  {/* Image du contact */}
                   <View style={styles.contactImageContainer}>
                     {item.urlimage ? (
                       <Image
@@ -342,13 +322,11 @@ export default function CreateGroup({ route, navigation }) {
                     )}
                   </View>
 
-                  {/* Informations du contact */}
                   <View style={styles.contactInfo}>
                     <Text style={styles.contactName}>{item.pseudo || "Utilisateur"}</Text>
                     <Text style={styles.contactNumber}>{item.numero || ""}</Text>
                   </View>
 
-                  {/* Indicateur de sélection */}
                   {selectedContacts[item.id] && (
                     <Ionicons name="checkmark-circle" size={24} color="rgb(88, 190, 85)" />
                   )}

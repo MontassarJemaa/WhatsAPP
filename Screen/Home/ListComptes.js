@@ -23,25 +23,20 @@ const database = firebase.database();
 const ref_database = database.ref();
 const ref_listCompte = ref_database.child("List_comptes");
 
-// Composant pour afficher l'image de profil avec gestion des erreurs et mise en cache
+
 const ProfileImage = ({ imageUrl, userId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [cachedImageUri, setCachedImageUri] = useState(null);
 
-  // Fonction pour mettre en cache l'image
   const cacheImage = async (uri, userId) => {
     try {
-      // Créer un nom de fichier unique pour l'image
       const filename = FileSystem.documentDirectory + `profile_${userId}.jpg`;
-
-      // Télécharger l'image et la sauvegarder localement
       const downloadResult = await FileSystem.downloadAsync(uri, filename);
 
       if (downloadResult.status === 200) {
         console.log(`Image mise en cache avec succès pour l'utilisateur ${userId}`);
 
-        // Enregistrer l'URI dans AsyncStorage
         await AsyncStorage.setItem(`profile_image_${userId}`, filename);
 
         return filename;
@@ -57,7 +52,6 @@ const ProfileImage = ({ imageUrl, userId }) => {
     try {
       const cachedUri = await AsyncStorage.getItem(`profile_image_${userId}`);
       if (cachedUri) {
-        // Vérifier si le fichier existe
         const fileInfo = await FileSystem.getInfoAsync(cachedUri);
         if (fileInfo.exists) {
           console.log(`Image chargée depuis le cache pour l'utilisateur ${userId}`);
@@ -76,7 +70,6 @@ const ProfileImage = ({ imageUrl, userId }) => {
 
       setIsLoading(true);
 
-      // Essayer de charger l'image depuis le cache
       const cachedUri = await loadImageFromCache(userId);
       if (cachedUri) {
         setCachedImageUri(cachedUri);
@@ -84,13 +77,11 @@ const ProfileImage = ({ imageUrl, userId }) => {
         return;
       }
 
-      // Si l'image n'est pas dans le cache, la télécharger et la mettre en cache
       try {
         const newCachedUri = await cacheImage(imageUrl, userId);
         if (newCachedUri) {
           setCachedImageUri(newCachedUri);
         } else {
-          // Si la mise en cache échoue, utiliser l'URL originale
           setCachedImageUri(imageUrl);
         }
       } catch (error) {
@@ -149,17 +140,14 @@ export default function ListComptes(props) {
   const preloadContactImages = async (contacts) => {
     console.log("Préchargement des images des contacts...");
 
-    // Créer un nouvel objet de cache
     const newCache = {};
 
     // Pour chaque contact avec une image
     for (const contact of contacts) {
       if (contact.urlimage && contact.id) {
         try {
-          // Vérifier si l'image est déjà en cache
           const cachedUri = await AsyncStorage.getItem(`profile_image_${contact.id}`);
           if (cachedUri) {
-            // Vérifier si le fichier existe
             const fileInfo = await FileSystem.getInfoAsync(cachedUri);
             if (fileInfo.exists) {
               console.log(`Image déjà en cache pour l'utilisateur ${contact.id}`);
@@ -168,19 +156,11 @@ export default function ListComptes(props) {
             }
           }
 
-          // Si l'image n'est pas en cache, la télécharger
           const filename = FileSystem.documentDirectory + `profile_${contact.id}.jpg`;
-
-          // Télécharger l'image et la sauvegarder localement
           const downloadResult = await FileSystem.downloadAsync(contact.urlimage, filename);
-
           if (downloadResult.status === 200) {
             console.log(`Image mise en cache avec succès pour l'utilisateur ${contact.id}`);
-
-            // Enregistrer l'URI dans AsyncStorage
             await AsyncStorage.setItem(`profile_image_${contact.id}`, filename);
-
-            // Ajouter au cache
             newCache[contact.id] = filename;
           }
         } catch (error) {
@@ -188,8 +168,6 @@ export default function ListComptes(props) {
         }
       }
     }
-
-    // Mettre à jour le cache
     setImageCache(newCache);
     console.log("Préchargement des images terminé");
   };
@@ -211,7 +189,6 @@ export default function ListComptes(props) {
       setData(d);
       setRefreshing(false);
 
-      // Précharger les images des contacts
       await preloadContactImages(d);
     };
 
@@ -221,16 +198,10 @@ export default function ListComptes(props) {
   // Fonction pour rafraîchir les données
   const onRefresh = loadData;
 
-  // Fonction pour vérifier les messages non lus pour un contact
   const checkUnreadMessages = async (contactId) => {
     try {
-      // Créer l'ID de discussion (combinaison des deux IDs)
       const discussionId = iduser > contactId ? iduser + contactId : contactId + iduser;
-
-      // Référence à la discussion
       const discussionRef = ref_database.child("List_des_messages").child(discussionId).child("les_messages");
-
-      // Récupérer les messages
       const snapshot = await discussionRef.once("value");
       let unreadCount = 0;
 
@@ -261,10 +232,8 @@ export default function ListComptes(props) {
   };
 
   useEffect(() => {
-    // Charger les données initiales
     loadData();
 
-    // Écouter les changements dans la base de données
     const handleDataChange = async (snapshot) => {
       const d = [];
 
@@ -277,29 +246,21 @@ export default function ListComptes(props) {
 
       setData(d);
 
-      // Précharger les images des contacts lorsque les données changent
       await preloadContactImages(d);
 
-      // Vérifier les messages non lus
       await checkAllUnreadMessages(d);
     };
 
     ref_listCompte.on("value", handleDataChange);
 
-    // Écouter les changements dans les messages
     const messagesRef = ref_database.child("List_des_messages");
     messagesRef.on("child_changed", async () => {
-      // Mettre à jour les compteurs de messages non lus lorsque les messages changent
       await checkAllUnreadMessages(data);
     });
 
-    // Nettoyer les écouteurs lorsque le composant est démonté
     return () => {
       ref_listCompte.off("value", handleDataChange);
       messagesRef.off("child_changed");
-
-      // Nous ne supprimons pas les images du cache lors du démontage
-      // pour qu'elles soient disponibles lors de la prochaine ouverture
     };
   }, [iduser, data.length]);
 
@@ -314,7 +275,6 @@ export default function ListComptes(props) {
         barStyle="light-content"
       />
 
-      {/* En-tête personnalisé */}
       <View style={styles.header}>
         <View style={styles.headerSpacer} />
         <Text style={styles.title}>Liste des Comptes</Text>
@@ -344,12 +304,19 @@ export default function ListComptes(props) {
           }
           renderItem={({ item }) => (
             <View style={styles.itemContainer}>
-              <View style={styles.avatarWrapper}>
+              <TouchableOpacity
+                style={styles.avatarWrapper}
+                onPress={() => {
+                  props.navigation.navigate("Details", {
+                    contactId: item.id,
+                    currentUserId: iduser,
+                  });
+                }}
+              >
                 <ProfileImage
                   imageUrl={item.urlimage}
                   userId={item.id}
                 />
-                {/* Indicateur de connexion en bas à gauche */}
                 <View
                   style={[
                     styles.connectionIndicator,
@@ -358,13 +325,11 @@ export default function ListComptes(props) {
                     }
                   ]}
                 />
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.info}>
                 <Text style={styles.text}>Numéro: {item.numero}</Text>
                 <Text style={styles.text}>Pseudo: {item.pseudo}</Text>
-
-                {/* Indicateur de messages non lus */}
                 {unreadMessages[item.id] > 0 && (
                   <View style={styles.messageIndicatorContainer}>
                     <Text style={styles.messageIndicatorText}>

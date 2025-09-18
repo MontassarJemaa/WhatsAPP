@@ -15,7 +15,6 @@ import React, { useState } from "react";
 import firebase from "../Config";
 import { Ionicons } from "@expo/vector-icons";
 
-// Logo nouveau compte
 import Logo from "../assets/nouveaucompte.png";
 
 const auth = firebase.auth();
@@ -49,7 +48,6 @@ export default function NewCompte({ navigation }) {
         const iduser = userCredential.user.uid;
         const ref_uncompte = ref_listcompte.child(iduser);
 
-        // Préparer les données à enregistrer
         const userData = {
           id: iduser,
           connected: true,
@@ -116,15 +114,15 @@ export default function NewCompte({ navigation }) {
               placeholderTextColor="#ccc"
               style={styles.passwordInput}
               value={Password}
-              textContentType="oneTimeCode" // Utiliser oneTimeCode au lieu de none
-              autoComplete="off" // Désactive l'autocomplétion
+              textContentType="oneTimeCode" 
+              autoComplete="off" 
               autoCorrect={false}
-              passwordRules="none" // Désactive les règles de mot de passe sur iOS
-              importantForAutofill="no" // Indique que le champ ne doit pas être considéré pour l'autofill
-              inputAccessoryViewID="no_suggestions" // Identifiant pour désactiver les suggestions
-              spellCheck={false} // Désactive la vérification orthographique
-              keyboardType="default" // Utiliser le clavier par défaut au lieu du clavier spécifique aux mots de passe
-              returnKeyType="next" // Définir le bouton de retour comme "suivant"
+              passwordRules="none" 
+              importantForAutofill="no" 
+              inputAccessoryViewID="no_suggestions"
+              spellCheck={false} 
+              keyboardType="default" 
+              returnKeyType="next" 
             />
             <TouchableOpacity
               style={styles.eyeIcon}
@@ -146,15 +144,15 @@ export default function NewCompte({ navigation }) {
               placeholderTextColor="#ccc"
               style={styles.passwordInput}
               value={ConfirmePassword}
-              textContentType="oneTimeCode" // Utiliser oneTimeCode au lieu de none
-              autoComplete="off" // Désactive l'autocomplétion
+              textContentType="oneTimeCode"  
+              autoComplete="off" 
               autoCorrect={false}
-              passwordRules="none" // Désactive les règles de mot de passe sur iOS
-              importantForAutofill="no" // Indique que le champ ne doit pas être considéré pour l'autofill
-              inputAccessoryViewID="no_suggestions" // Identifiant pour désactiver les suggestions
-              spellCheck={false} // Désactive la vérification orthographique
-              keyboardType="default" // Utiliser le clavier par défaut au lieu du clavier spécifique aux mots de passe
-              returnKeyType="done" // Définir le bouton de retour comme "terminé"
+              passwordRules="none" 
+              importantForAutofill="no" 
+              inputAccessoryViewID="no_suggestions"
+              spellCheck={false} 
+              keyboardType="default" 
+              returnKeyType="done"
             />
             <TouchableOpacity
               style={styles.eyeIcon}

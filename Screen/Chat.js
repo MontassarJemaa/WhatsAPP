@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import firebase from "../Config";
+import { supabase } from "../Config";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
@@ -57,7 +58,6 @@ const Chat = (props) => {
   const recordingTimerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Lire état second is typing
   useEffect(() => {
     ref_secondistyping.on("value", (snapshot) => {
       setistyping(snapshot.val());
@@ -67,22 +67,17 @@ const Chat = (props) => {
     };
   }, []);
 
-  // Récupérer les informations des utilisateurs
   useEffect(() => {
     const ref_listcompte = ref_database.child("List_comptes");
 
-    // Récupérer les infos de l'utilisateur courant
     ref_listcompte.child(currentid).once("value", (snapshot) => {
       setCurrentUserInfo(snapshot.val());
     });
 
-    // Récupérer les infos du second utilisateur
     ref_listcompte.child(secondid).once("value", (snapshot) => {
       setSecondUserInfo(snapshot.val());
     });
   }, [currentid, secondid]);
-
-  // Récupérer liste des messages et marquer comme vu
   useEffect(() => {
     ref_messages.on("value", (snapshot) => {
       var d = [];
@@ -90,12 +85,12 @@ const Chat = (props) => {
         const messageData = unmsg.val();
         d.push({ id: unmsg.key, ...messageData });
 
-        // Marquer les messages reçus comme vus
+
         if (messageData.receiver === currentid && messageData.sender === secondid && !messageData.seen) {
           ref_messages.child(unmsg.key).update({ seen: true });
         }
 
-        // Afficher les informations sur les messages avec images
+
         if (messageData.imageUri) {
           console.log("Message avec image:", {
             id: unmsg.key,
@@ -120,9 +115,7 @@ const Chat = (props) => {
   const handleSendMessage = () => {
     if (msg.trim() === "") return;
 
-    const key = ref_messages.push().key;
-    const ref_unmsg = ref_messages.child(key);
-    ref_unmsg.set({
+    const messageData = {
       contenu: msg,
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
@@ -132,25 +125,37 @@ const Chat = (props) => {
       receiver: secondid,
       reactions: {},
       seen: false,
+    };
+
+    const key = ref_messages.push().key;
+    const ref_unmsg = ref_messages.child(key);
+    ref_unmsg.set(messageData);
+
+
+    ref_une_discussion.child("lastmessage").set({
+      ...messageData,
+      id: key,
+      timestamp: Date.now()
     });
+
     setmsg("");
 
-    // Désactiver l'indicateur de frappe après l'envoi du message
+
     ref_currentistyping.set(false);
   };
 
   const addReaction = (messageId, emoji) => {
     const messageRef = ref_messages.child(messageId);
 
-    // Vérifier si l'utilisateur a déjà réagi avec cet emoji
+
     messageRef.child("reactions").child(currentid).once("value", (snapshot) => {
       const currentReaction = snapshot.val();
 
       if (currentReaction === emoji) {
-        // Si l'utilisateur a déjà réagi avec cet emoji, supprimer la réaction
+
         messageRef.child("reactions").child(currentid).remove();
       } else {
-        // Sinon, ajouter ou mettre à jour la réaction
+
         messageRef.child("reactions").child(currentid).set(emoji);
       }
     });
@@ -158,7 +163,7 @@ const Chat = (props) => {
     setShowEmojiPicker(false);
   };
 
-  // Fonction pour sélectionner une image depuis la galerie
+
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -182,7 +187,7 @@ const Chat = (props) => {
     }
   };
 
-  // Fonction pour prendre une photo avec la caméra
+
   const takePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -208,12 +213,11 @@ const Chat = (props) => {
     }
   };
 
-  // Fonction simplifiée pour envoyer un message avec image
+
   const sendImageMessage = async (uri) => {
     try {
       setIsUploading(true);
-      const key = ref_messages.push().key;
-      await ref_messages.child(key).set({
+      const messageData = {
         contenu: "",
         imageUri: uri,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -221,11 +225,120 @@ const Chat = (props) => {
         receiver: secondid,
         reactions: {},
         seen: false
+      };
+
+      const key = ref_messages.push().key;
+      await ref_messages.child(key).set(messageData);
+
+
+      ref_une_discussion.child("lastmessage").set({
+        ...messageData,
+        id: key,
+        timestamp: Date.now()
       });
     } catch (error) {
       Alert.alert("Erreur", "Impossible d'envoyer l'image");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+
+  const uploadImageToSupabaseAndSendLink = async (uri) => {
+    try {
+      setIsUploading(true);
+
+
+      const fileName = `chat_images/${currentid}_${secondid}_${Date.now()}.jpg`;
+
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+
+      const { data: uploadData, error } = await supabase.storage
+        .from('images')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (error) {
+        console.error("Erreur upload Supabase:", error);
+        throw error;
+      }
+
+      if (!uploadData) {
+        throw new Error("Échec de l'upload - aucune donnée retournée");
+      }
+
+      console.log("Upload réussi:", uploadData);
+
+
+      const { data: publicUrlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(fileName);
+
+      const publicUrl = publicUrlData?.publicURL;
+
+      if (!publicUrl) {
+        throw new Error("Impossible d'obtenir l'URL publique de l'image");
+      }
+
+      console.log("URL publique Supabase:", publicUrl);
+
+
+      const messageData = {
+        contenu: `📷 Image: ${publicUrl}`,
+        imageLink: publicUrl,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        sender: currentid,
+        receiver: secondid,
+        reactions: {},
+        seen: false,
+        messageType: "imageLink"
+      };
+
+      const key = ref_messages.push().key;
+      await ref_messages.child(key).set(messageData);
+
+
+      ref_une_discussion.child("lastmessage").set({
+        ...messageData,
+        id: key,
+        timestamp: Date.now()
+      });
+
+      Alert.alert("Succès", "Image uploadée et lien envoyé !");
+
+    } catch (error) {
+      console.error("Erreur upload Supabase:", error);
+      console.error("Détails de l'erreur:", JSON.stringify(error, null, 2));
+      Alert.alert("Erreur", "Impossible d'uploader l'image vers Supabase: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+
+  const pickImageAsSupabaseLink = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission refusée");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        await uploadImageToSupabaseAndSendLink(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de sélectionner l'image");
     }
   };
 
@@ -355,12 +468,7 @@ const Chat = (props) => {
         throw new Error("URI de l'enregistrement invalide");
       }
 
-      console.log("Création d'une nouvelle entrée dans la base de données");
-      const key = ref_messages.push().key;
-
-      // Enregistrer le message dans Firebase
-      console.log("Enregistrement du message vocal dans Firebase");
-      await ref_messages.child(key).set({
+      const messageData = {
         contenu: "",
         audioUri: uri,
         audioDuration: duration,
@@ -370,6 +478,20 @@ const Chat = (props) => {
         reactions: {},
         seen: false,
         messageType: "audio" // Ajouter un type pour faciliter l'identification
+      };
+
+      console.log("Création d'une nouvelle entrée dans la base de données");
+      const key = ref_messages.push().key;
+
+      // Enregistrer le message dans Firebase
+      console.log("Enregistrement du message vocal dans Firebase");
+      await ref_messages.child(key).set(messageData);
+
+      // Sauvegarder le dernier message
+      ref_une_discussion.child("lastmessage").set({
+        ...messageData,
+        id: key,
+        timestamp: Date.now()
       });
 
       console.log("Message vocal enregistré avec succès dans Firebase");
@@ -627,6 +749,33 @@ const Chat = (props) => {
                           </View>
                         )}
 
+                        {item.imageLink && (
+                          <TouchableOpacity
+                            style={styles.imageLinkContainer}
+                            onPress={() => {
+                              // Optionnel : ouvrir l'image dans une visionneuse
+                              Alert.alert("Lien d'image", item.imageLink);
+                            }}
+                          >
+                            <View style={styles.imageLinkContent}>
+                              <Ionicons
+                                name="link"
+                                size={20}
+                                color={isCurrentUser ? "#fff" : "#4ca38d"}
+                              />
+                              <Text
+                                style={[
+                                  styles.imageLinkText,
+                                  isCurrentUser ? styles.currentUserText : styles.otherUserText
+                                ]}
+                                numberOfLines={1}
+                              >
+                                Lien d'image
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        )}
+
                         {item.audioUri && (
                           <TouchableOpacity
                             style={styles.audioContainer}
@@ -731,6 +880,18 @@ const Chat = (props) => {
               >
                 <Ionicons
                   name="image-outline"
+                  size={24}
+                  color="rgba(255, 255, 255, 0.7)"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.attachButton}
+                onPress={pickImageAsSupabaseLink}
+                disabled={isUploading}
+              >
+                <Ionicons
+                  name="link-outline"
                   size={24}
                   color="rgba(255, 255, 255, 0.7)"
                 />
@@ -1016,6 +1177,23 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 10,
+  },
+  imageLinkContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  imageLinkContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  imageLinkText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
   },
   inputContainer: {
     backgroundColor: "rgba(30, 30, 30, 0.9)",

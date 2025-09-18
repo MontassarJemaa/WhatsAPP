@@ -10,19 +10,17 @@ const Tab = createMaterialBottomTabNavigator();
 
 export default function Home(props) {
   const iduser = props.route.params.iduser;
-  // Récupérer l'objet profileImage s'il existe
   const profileImage = props.route.params.profileImage || null;
-  // Récupérer l'écran initial depuis les paramètres (par défaut ListComptes)
   const initialScreen = props.route.params.screen || "ListComptes";
   return (
     <Tab.Navigator
       initialRouteName={initialScreen}
-      activeColor="#5fb39d"  // Icônes/texte actifs en vert menthe clair
-      inactiveColor="#b0b0b0" // Icônes/texte inactifs gris clair
+      activeColor="#5fb39d" 
+      inactiveColor="#b0b0b0" 
       barStyle={{
-        backgroundColor: "#212121",  // Barre noire pour la fondation
-        elevation: 8,                 // Ombre portée pour un effet de surélévation
-        paddingBottom: 5,             // Espacement au bas
+        backgroundColor: "#212121", 
+        elevation: 8,                 
+        paddingBottom: 5,             
       }}
     >
       <Tab.Screen
@@ -35,7 +33,7 @@ export default function Home(props) {
             <MaterialCommunityIcons
               name="account-multiple"
               color={color}
-              size={30}  // Taille des icônes
+              size={30}  
             />
           ),
         }}
@@ -50,7 +48,7 @@ export default function Home(props) {
             <MaterialCommunityIcons
               name="account-group"
               color={color}
-              size={30}  // Taille des icônes
+              size={30}  
             />
           ),
         }}
@@ -65,7 +63,7 @@ export default function Home(props) {
             <MaterialCommunityIcons
               name="account-circle"
               color={color}
-              size={32}  // Taille des icônes
+              size={32} 
             />
           ),
         }}

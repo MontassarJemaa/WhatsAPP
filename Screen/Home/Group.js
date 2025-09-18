@@ -19,7 +19,6 @@ import * as FileSystem from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Group({ route, navigation }) {
-  // Vérifier si route.params existe avant d'essayer d'accéder à iduser
   const iduser = route?.params?.iduser || null;
 
   const [groups, setGroups] = useState([]);
@@ -29,12 +28,10 @@ export default function Group({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
 
-  // Référence à la base de données Firebase
   const groupsRef = firebase.database().ref("groups");
   const contactsRef = firebase.database().ref("List_comptes");
 
   useEffect(() => {
-    // Afficher un message d'erreur si iduser n'est pas défini
     if (!iduser) {
       console.error("Erreur: iduser n'est pas défini dans route.params");
       Alert.alert(
@@ -46,10 +43,8 @@ export default function Group({ route, navigation }) {
       return;
     }
 
-    // Charger les données
     loadData();
 
-    // Nettoyer les écouteurs lors du démontage
     return () => {
       groupsRef.off();
       contactsRef.off();
@@ -61,7 +56,6 @@ export default function Group({ route, navigation }) {
     setLoading(true);
 
     try {
-      // Charger les informations de l'utilisateur
       const userRef = firebase.database().ref(`List_comptes/${iduser}`);
       const userSnapshot = await userRef.once("value");
       const userData = userSnapshot.val();
@@ -72,7 +66,6 @@ export default function Group({ route, navigation }) {
         console.warn(`Aucune donnée utilisateur trouvée pour l'ID: ${iduser}`);
       }
 
-      // Charger les contacts
       contactsRef.on("value", (snapshot) => {
         const contactsData = snapshot.val();
         if (contactsData) {
@@ -86,16 +79,13 @@ export default function Group({ route, navigation }) {
         }
       });
 
-      // Charger les groupes
       groupsRef.on("value", (snapshot) => {
         const groupsData = snapshot.val();
         if (groupsData) {
-          // Filtrer les groupes dont l'utilisateur est membre
           const userGroups = Object.values(groupsData).filter(group =>
             group.members && group.members[iduser]
           );
 
-          // Trier les groupes par date de dernier message
           userGroups.sort((a, b) => {
             const aLastMessage = a.lastMessage ? a.lastMessage.timestamp : 0;
             const bLastMessage = b.lastMessage ? b.lastMessage.timestamp : 0;
@@ -119,18 +109,14 @@ export default function Group({ route, navigation }) {
     }
   };
 
-  // Fonction pour rafraîchir les données
   const handleRefresh = () => {
     setRefreshing(true);
     loadData().then(() => setRefreshing(false));
   };
-
   // Fonction pour créer un nouveau groupe
   const createNewGroup = () => {
     navigation.navigate("CreateGroup", { iduser });
   };
-
-  // Fonction pour ouvrir un groupe
   const openGroup = (group) => {
     navigation.navigate("GroupChat", {
       iduser,
@@ -139,7 +125,6 @@ export default function Group({ route, navigation }) {
     });
   };
 
-  // Fonction pour formater la date du dernier message
   const formatLastMessageTime = (timestamp) => {
     if (!timestamp) return "";
 
@@ -148,17 +133,13 @@ export default function Group({ route, navigation }) {
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      // Aujourd'hui: afficher l'heure
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays === 1) {
-      // Hier
       return "Hier";
     } else if (diffDays < 7) {
-      // Cette semaine
       const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
       return days[date.getDay()];
     } else {
-      // Plus ancien
       return date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
     }
   };
@@ -174,7 +155,6 @@ export default function Group({ route, navigation }) {
         barStyle="light-content"
       />
 
-      {/* En-tête personnalisé */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -191,7 +171,6 @@ export default function Group({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Liste des groupes */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#ffffff" />
@@ -211,7 +190,6 @@ export default function Group({ route, navigation }) {
                 style={styles.groupItem}
                 onPress={() => openGroup(item)}
               >
-                {/* Image du groupe */}
                 <View style={styles.groupImageContainer}>
                   {item.image ? (
                     <Image
@@ -227,7 +205,6 @@ export default function Group({ route, navigation }) {
                   )}
                 </View>
 
-                {/* Informations du groupe */}
                 <View style={styles.groupInfo}>
                   <Text style={styles.groupName}>{item.name}</Text>
 
@@ -240,14 +217,12 @@ export default function Group({ route, navigation }) {
                   )}
                 </View>
 
-                {/* Date du dernier message */}
                 {lastMessage.timestamp && (
                   <View style={styles.timeContainer}>
                     <Text style={styles.timeText}>
                       {formatLastMessageTime(lastMessage.timestamp)}
                     </Text>
 
-                    {/* Badge de messages non lus */}
                     {item.unreadCount && item.unreadCount[iduser] > 0 && (
                       <View style={styles.unreadBadge}>
                         <Text style={styles.unreadCount}>
@@ -351,7 +326,7 @@ const styles = StyleSheet.create({
   },
   groupsContainer: {
     padding: 10,
-    paddingBottom: 80, // Espace pour le bouton flottant
+    paddingBottom: 80, 
   },
   groupItem: {
     flexDirection: "row",

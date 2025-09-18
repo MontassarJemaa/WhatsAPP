@@ -176,6 +176,9 @@ export default function MonCompte(props) {
   const [pseudo, setPseudo] = useState("");
   const [numero, setNumero] = useState("");
   const [numeroError, setNumeroError] = useState("");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const ref_uncompte = ref_listcompte.child(iduser);
   const [uriimage, seturiimage] = useState();
   const [isdefault, setisdefault] = useState(true);
@@ -204,14 +207,16 @@ export default function MonCompte(props) {
 
       console.log("Données du compte chargées:", data);
 
-      // Définir le pseudo et le numéro
+
       setPseudo(data.pseudo || "");
       setNumero(data.numero || "");
+      setNom(data.nom || "");
+      setPrenom(data.prenom || "");
 
-      // Gérer l'image de profil
+
       const hasProfileImageFromParams = profileImageFromParams && profileImageFromParams.url;
 
-      // Si nous avons une image de profil des paramètres, l'utiliser
+
       if (hasProfileImageFromParams) {
         console.log("Utilisation de l'image de profil des paramètres");
         if (profileImageFromParams.url) {
@@ -518,7 +523,7 @@ export default function MonCompte(props) {
 
             <TextInput
               style={[styles.input, { fontWeight: "bold" }]}
-              placeholder="Ecrire votre pseudo"
+              placeholder="Pseudo (min 3 caractères)"
               placeholderTextColor="rgba(255, 255, 255, 0.7)"
               value={pseudo}
               onChangeText={setPseudo}
@@ -551,9 +556,40 @@ export default function MonCompte(props) {
               <Text style={styles.errorText}>{numeroError}</Text>
             ) : null}
 
+            {/* Bouton Plus de détails */}
+            <TouchableOpacity
+              style={styles.detailsButton}
+              onPress={() => setShowDetails(!showDetails)}
+            >
+              <Text style={styles.detailsButtonText}>
+                {showDetails ? "Masquer les détails" : "Plus de détails"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Champs nom et prénom (conditionnels) */}
+            {showDetails && (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nom (optionnel)"
+                  placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                  value={nom}
+                  onChangeText={setNom}
+                />
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Prénom (optionnel)"
+                  placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                  value={prenom}
+                  onChangeText={setPrenom}
+                />
+              </>
+            )}
+
             {/* Message d'information sur les champs requis */}
             <Text style={styles.infoText}>
-              * Tous les champs sont obligatoires pour enregistrer votre compte
+              * Pseudo (min 3 caractères), Numéro (8 chiffres) et Image requis
             </Text>
 
             {/* Bouton SAVE */}
@@ -561,12 +597,11 @@ export default function MonCompte(props) {
               style={[
                 styles.saveButton,
                 // Griser le bouton si les conditions ne sont pas remplies
-                (!uriimage || !pseudo || numero.length !== 8) ? styles.disabledButton : null
+                (!uriimage || !pseudo || pseudo.length < 3 || numero.length !== 8) ? styles.disabledButton : null
               ]}
-              disabled={isSaving || !uriimage || !pseudo || numero.length !== 8}
+              disabled={isSaving || !uriimage || !pseudo || pseudo.length < 3 || numero.length !== 8}
               onPress={async () => {
                 try {
-                  // Vérifier que tous les champs requis sont remplis
                   if (!uriimage) {
                     alert("⚠️ Veuillez importer une image de profil");
                     return;
@@ -574,6 +609,11 @@ export default function MonCompte(props) {
 
                   if (!pseudo) {
                     alert("⚠️ Veuillez entrer un pseudo");
+                    return;
+                  }
+
+                  if (pseudo.length < 3) {
+                    alert("⚠️ Le pseudo doit contenir au moins 3 caractères");
                     return;
                   }
 
@@ -605,6 +645,8 @@ export default function MonCompte(props) {
                       id: iduser,
                       pseudo,
                       numero,
+                      nom,
+                      prenom,
                     };
 
                     // Ajouter l'URL de l'image seulement si elle est définie
@@ -623,7 +665,9 @@ export default function MonCompte(props) {
                           urlimage: cleanUrl,
                           id: iduser,
                           pseudo: pseudo,
-                          numero: numero
+                          numero: numero,
+                          nom: nom,
+                          prenom: prenom
                         });
                       } else {
                         // Créer un nouveau compte si nécessaire
@@ -631,7 +675,9 @@ export default function MonCompte(props) {
                           urlimage: cleanUrl,
                           id: iduser,
                           pseudo: pseudo,
-                          numero: numero
+                          numero: numero,
+                          nom: nom,
+                          prenom: prenom
                         });
                       }
 
@@ -640,14 +686,16 @@ export default function MonCompte(props) {
                     // Mettre à jour les données
                     console.log("Données à mettre à jour:", updateData);
                     await ref_uncompte.update(updateData);
-                    alert("✅ Compte enregistré !");
+
+                    // Alerte de succès
+                    alert("✅ Compte enregistré avec succès dans Firebase !");
 
                     // Naviguer vers ListComptes après sauvegarde
                     props.navigation.navigate("ListComptes");
                   }
                 } catch (err) {
-                  console.error(err);
-                  alert("❌ Erreur lors de l'enregistrement.");
+                  console.error("Erreur Firebase:", err);
+                  alert("❌ Erreur lors de l'enregistrement dans Firebase : " + err.message);
                 } finally {
                   setIsSaving(false);
                 }
@@ -826,5 +874,16 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     width: "80%",
     textAlign: "center",
+  },
+  detailsButton: {
+    marginVertical: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  detailsButtonText: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
 });
